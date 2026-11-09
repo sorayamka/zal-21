@@ -87,6 +87,23 @@ function sleepStats(n) {
   };
 }
 
+// Утренняя оценка 1–5 против длительности и времени отхода. n: [{ dur, bed, q }]; без q — не учитываем
+// Сравнения показываем, только когда в каждой группе хотя бы 2 ночи: по одной ночи выводы — шум
+function sleepInsight(n) {
+  var r = n.filter(function (x) { return x.q; });
+  if (r.length < 4) return { need: 4 - r.length };
+  function avg(a) { return Math.round(a.reduce(function (s, x) { return s + x.q; }, 0) / a.length * 10) / 10; }
+  var out = { n: r.length, avg: avg(r) };
+  var hi = r.filter(function (x) { return x.dur >= 420; }), lo = r.filter(function (x) { return x.dur < 420; });
+  if (hi.length >= 2 && lo.length >= 2) out.dur = { hi: avg(hi), lo: avg(lo) };
+  var bk = {};
+  r.forEach(function (x) { var h = Math.floor(x.dur / 60); (bk[h] = bk[h] || []).push(x); });
+  Object.keys(bk).forEach(function (h) { if (bk[h].length >= 2 && (!out.best || avg(bk[h]) > out.best.q)) out.best = { h: +h, q: avg(bk[h]) }; });
+  var early = r.filter(function (x) { return (x.bed + 720) % 1440 < 720; }), late = r.filter(function (x) { return (x.bed + 720) % 1440 >= 720; }); // до/после полуночи
+  if (early.length >= 2 && late.length >= 2) out.bed = { early: avg(early), late: avg(late) };
+  return out;
+}
+
 // Календарь (.ics) для iPhone/Google: события в местном времени + напоминание за remind минут
 // ev: [{ date:'2026-11-11', time:'18:00', min:65, title:'…', desc:'…' }]
 function icsCal(ev, remind, stamp) {
@@ -106,4 +123,4 @@ function icsCal(ev, remind, stamp) {
   return out.join('\r\n') + '\r\n';
 }
 
-if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday, icsCal: icsCal, sleepStats: sleepStats };
+if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday, icsCal: icsCal, sleepStats: sleepStats, sleepInsight: sleepInsight };

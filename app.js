@@ -335,7 +335,7 @@ function nights(days) {
   var n = (S.sl && S.sl.n) || {}, from = addDays(TODAY, -(days - 1));
   return Object.keys(n).sort().filter(function (d) { return d >= from; }).map(function (d) {
     var a = new Date(n[d][0]), b = new Date(n[d][1]);
-    return { d: d, s: n[d][0], e: n[d][1], dur: Math.round((n[d][1] - n[d][0]) / 6e4), bed: a.getHours() * 60 + a.getMinutes(), wake: b.getHours() * 60 + b.getMinutes() };
+    return { d: d, s: n[d][0], e: n[d][1], dur: Math.round((n[d][1] - n[d][0]) / 6e4), bed: a.getHours() * 60 + a.getMinutes(), wake: b.getHours() * 60 + b.getMinutes(), q: n[d][2] || 0 };
   });
 }
 function nightHero() {
@@ -354,7 +354,9 @@ function sleepCard() {
   return '<div class="card sleep"><div class="ch"><span class="l"><span class="ico">' + ic('moon') + '</span>Сон</span><button class="sel" data-a="slist">все ночи</button></div>' +
     (last ? '<div class="fc" style="margin-top:12px;align-items:center"><div><div class="num-l">' + durTxt(last.dur).replace(' мин', '<small> мин</small>').replace(' ч ', '<small> ч </small>') + '</div>' +
       '<div class="t2 xs" style="margin-top:6px">' + (last.d === TODAY ? 'этой ночью' : dayName(last.d)) + ' · ' + hm(last.s) + '–' + hm(last.e) + '</div></div>' +
-      '<div class="t2 xs" style="text-align:right">в среднем<br><b style="color:var(--t1);font-weight:400;font-size:15px">' + durTxt(st.avg) + '</b></div></div>'
+      '<div class="t2 xs" style="text-align:right">в среднем<br><b style="color:var(--t1);font-weight:400;font-size:15px">' + durTxt(st.avg) + '</b></div></div>' +
+      (last.d === TODAY ? (last.q ? '<button class="sel" style="margin-top:12px" data-a="sedit" data-v="' + last.d + '">Утро: ' + last.q + ' · ' + QL[last.q - 1].toLowerCase() + '</button>'
+        : '<p class="t2 sm" style="margin-top:14px">Как выспался?</p>' + rateRow(last.d, 0)) : '')
       : '<p class="t2 sm" style="margin-top:10px">Нажми, когда ложишься, и «Проснулся» утром — посчитаю, сколько ты спал и насколько ровный режим</p>') +
     '<button class="pb gh wide" style="margin-top:14px;height:48px" data-a="sleep">' + ic('moon') + 'Ложусь спать</button></div>';
 }
@@ -374,14 +376,26 @@ function sleepProg() {
     '<div><b class="' + (st.debt > 420 ? 'ac' : '') + '">' + (st.debt ? Math.round(st.debt / 6) / 10 + ' ч' : '0') + '</b><span>недосып до 8 ч за неделю</span></div></div>' +
     '<p class="t2 sm" style="margin-top:14px">' + (st.bedSd !== null && st.bedSd > 45 ? 'Режим скачет больше чем на 45 минут — ложись в одно время, это важно не меньше длительности' :
       st.avg < 420 ? 'Меньше 7 часов: в дефиците калорий недосып съедает мышцы и тормозит жиросжигание'
-      : st.avg < 480 ? 'В норме. Добери до 8 часов — в дефиците это лучше для мышц и аппетита' : 'Отличный сон — мышцы восстанавливаются, аппетит под контролем') + '</p></div>';
+      : st.avg < 480 ? 'В норме. Добери до 8 часов — в дефиците это лучше для мышц и аппетита' : 'Отличный сон — мышцы восстанавливаются, аппетит под контролем') + '</p>' +
+    insight() + '</div>';
   return h;
+}
+// Разбор по утренним оценкам за 60 ночей: что именно тебе даёт хорошее утро
+function insight() {
+  var si = sleepInsight(nights(60)), h = '<div class="ins"><b>' + ic('target') + 'Твой сон</b>';
+  if (si.need) return h + '<p>Оцени утро ещё ' + si.need + ' ' + plural(si.need, 'раз', 'раза', 'раз') + ' — покажу, при каком сне ты высыпаешься лучше</p></div>';
+  var L = ['Средняя оценка утра — <b>' + si.avg + '</b> из 5 по ' + si.n + ' ' + plural(si.n, 'ночи', 'ночам', 'ночам')];
+  if (si.dur) L.push('7+ часов сна — утро <b>' + si.dur.hi + '</b>, меньше 7 — <b>' + si.dur.lo + '</b>');
+  if (si.best) L.push('Лучше всего высыпаешься при <b>' + si.best.h + '–' + (si.best.h + 1) + ' ч</b> сна (' + si.best.q + ')');
+  if (si.bed) L.push('Лёг до полуночи — <b>' + si.bed.early + '</b>, после — <b>' + si.bed.late + '</b>');
+  if (L.length === 1) L.push('Пока все ночи похожи — сравнения появятся, когда будут разные по длине и времени');
+  return h + '<ul>' + L.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>';
 }
 function sleepList() {
   var ns = nights(30).reverse();
   sheet('<h2>Сон</h2><p class="t2 sm" style="margin-top:4px">Нажми на ночь, чтобы исправить время</p><div style="margin-top:8px">' +
     (ns.length ? ns.map(function (x) {
-      return '<button class="exl" data-a="sedit" data-v="' + x.d + '"><span class="th dn" style="font-size:13px">' + WD[wday(x.d)] + '</span><div><b>' + durTxt(x.dur) + '</b><small>' + dayName(x.d) + ' · ' + hm(x.s) + '–' + hm(x.e) + '</small></div>' + ic('next') + '</button>';
+      return '<button class="exl" data-a="sedit" data-v="' + x.d + '"><span class="th dn" style="font-size:13px">' + WD[wday(x.d)] + '</span><div><b>' + durTxt(x.dur) + '</b><small>' + dayName(x.d) + ' · ' + hm(x.s) + '–' + hm(x.e) + (x.q ? ' · утро ' + x.q + '/5' : '') + '</small></div>' + ic('next') + '</button>';
     }).join('') : '<p class="t2 sm">Пока нет записей</p>') + '</div>' +
     '<button class="pb gh wide" style="margin-top:12px" data-a="sedit" data-v="new">' + ic('plus') + 'Добавить ночь вручную</button>' +
     '<p class="t3 xs" style="margin-top:14px">Это время в кровати: засыпание обычно занимает 10–20 минут. Веб-приложение не видит данные «Здоровья» и Apple Watch — точнее всего отмечать кнопками сразу, как лёг и как встал</p>');
@@ -391,15 +405,28 @@ function sleepEdit(d) {
   sheet('<h2>' + (x ? 'Ночь · ' + dayName(d) : 'Добавить ночь') + '</h2>' +
     '<label class="t2 xs" style="display:block;margin-top:14px">Лёг<input type="datetime-local" id="ss" class="date-in" value="' + dtl(s) + '"></label>' +
     '<label class="t2 xs" style="display:block;margin-top:12px">Встал<input type="datetime-local" id="se" class="date-in" value="' + dtl(e) + '"></label>' +
+    '<p class="t2 xs" style="margin-top:14px">Как выспался</p>' + rateRow('', x && x[2] || 0) +
     '<button class="pb wide" style="margin-top:18px" data-a="ssave" data-v="' + d + '">Сохранить</button>' +
     (x ? '<button class="lnk" style="color:#E7806A" data-a="sdel" data-v="' + d + '">Удалить ночь</button>' : ''));
 }
+// Утренняя оценка: 1 — разбит, 5 — отлично. d — ночь (кнопки сразу сохраняют), '' — выбор внутри формы правки
+var QL = ['Разбит', 'Плохо', 'Нормально', 'Хорошо', 'Отлично'];
+function rateRow(d, cur) {
+  return '<div class="rate">' + QL.map(function (t, i) {
+    return '<button class="' + (cur === i + 1 ? 'on' : '') + '" data-q="' + (i + 1) + '" data-a="' + (d ? 'srate' : 'sqpick') + '" data-v="' + d + '"><b>' + (i + 1) + '</b>' + t + '</button>';
+  }).join('') + '</div>';
+}
+function rateSheet(d, m) {
+  sheet('<span class="eyebrow">Ты спал ' + durTxt(m) + '</span><h2 style="margin-top:6px">Как выспался?</h2>' +
+    '<p class="t2 sm" style="margin-top:4px">Через пару недель покажу, при каком сне тебе лучше всего</p>' + rateRow(d, 0) +
+    '<button class="lnk" data-a="close">Позже</button>');
+}
 // Записать ночь; 7+ часов — сама ставится галочка «Сон 7+»
-function putNight(s, e, old) {
+function putNight(s, e, old, q) {
   var key = iso(new Date(e)), m = (e - s) / 6e4;
   S.sl = S.sl || { n: {} }; S.sl.n = S.sl.n || {};
   if (old && old !== 'new' && old !== key) delete S.sl.n[old];
-  S.sl.n[key] = [s, e];
+  S.sl.n[key] = q ? [s, e, q] : [s, e];
   if (m >= 420) { S.hab[key] = S.hab[key] || {}; S.hab[key].z = true; }
 }
 setInterval(function () { var el = $('slt'); if (el && S.sl && S.sl.cur) el.textContent = durTxt((Date.now() - S.sl.cur) / 6e4); }, 30e3);
@@ -543,9 +570,9 @@ function depthOf(st) { st = st || {}; return (st.r ? 1 : 0) + (st.s ? 1 : 0); }
 function sheet(html) {
   var el = $('sheet');
   if (el.hidden) history.pushState({ r: !!R, s: 1 }, '');
-  el.innerHTML = '<div class="pane" role="dialog" aria-modal="true"><div class="grab"></div>' + html + '</div>'; el.hidden = false;
+  el.innerHTML = '<div class="pane" role="dialog" aria-modal="true"><div class="grab"></div>' + html + '</div>'; el.hidden = false; document.body.classList.add('sheeted');
 }
-function hideSheet() { $('sheet').hidden = true; $('sheet').innerHTML = ''; }
+function hideSheet() { $('sheet').hidden = true; $('sheet').innerHTML = ''; document.body.classList.remove('sheeted'); }
 function closeSheet() { if ($('sheet').hidden) return; hideSheet(); if (history.state && history.state.s) history.back(); }
 window.addEventListener('popstate', function (e) {
   var st = e.state || {};
@@ -941,8 +968,16 @@ document.addEventListener('click', function (e) {
     if (m0 < 20) { act('Меньше 20 минут — не записал', function () { delete S.sl.cur; }); render(); return; }
     act('Ты спал ' + durTxt(m0), function () { putNight(s0, e0); delete S.sl.cur; });
     render();
+    if (m0 <= 16 * 60) rateSheet(iso(new Date(e0)), m0);
     if (m0 > 16 * 60) { sleepEdit(iso(new Date(e0))); toast('Больше 16 часов — похоже, забыл нажать. Поправь время'); }
   }
+  else if (a === 'srate') {
+    var q = +b.dataset.q, nn = S.sl && S.sl.n && S.sl.n[v];
+    if (!nn) return;
+    act('Утро: ' + q + ' · ' + QL[q - 1].toLowerCase(), function () { nn[2] = q; });
+    closeSheet(); render();
+  }
+  else if (a === 'sqpick') { b.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); }
   else if (a === 'slist') sleepList();
   else if (a === 'sedit') sleepEdit(v);
   else if (a === 'ssave') {
@@ -950,7 +985,8 @@ document.addEventListener('click', function (e) {
     if (!(ss && se) || se <= ss) { toast('«Встал» должно быть позже, чем «лёг»'); return; }
     if (se - ss > 20 * 36e5) { toast('Больше 20 часов — проверь даты'); return; }
     if (se > Date.now() + 6e4) { toast('Это время ещё не наступило'); return; }
-    act('Сон записан: ' + durTxt((se - ss) / 6e4), function () { putNight(ss, se, v); });
+    var sq = +(document.querySelector('#sheet .rate .on') || { dataset: {} }).dataset.q || 0;
+    act('Сон записан: ' + durTxt((se - ss) / 6e4), function () { putNight(ss, se, v, sq); });
     sleepList(); render();
   }
   else if (a === 'sdel') { act('Ночь удалена', function () { delete S.sl.n[v]; }); sleepList(); render(); }

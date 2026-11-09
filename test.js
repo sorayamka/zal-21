@@ -38,4 +38,12 @@ var sl = L.sleepStats([{ dur: 450, bed: 1430, wake: 440 }, { dur: 420, bed: 10, 
 a.strictEqual(sl.avg, 435); a.strictEqual(sl.bedSd, 10); a.strictEqual(sl.wakeSd, 5); a.strictEqual(sl.debt, 90);
 a.strictEqual(L.sleepStats([]), null); a.strictEqual(L.sleepStats([{ dur: 500, bed: 0, wake: 500 }]).bedSd, null);
 a.strictEqual(L.sleepStats([{ dur: 500, bed: 0, wake: 500 }]).debt, 0);
+a.deepStrictEqual(L.sleepInsight([{ dur: 400, bed: 0, q: 3 }, { dur: 400, bed: 0 }]), { need: 3 });
+var si = L.sleepInsight([
+  { dur: 470, bed: 1410, q: 5 }, { dur: 450, bed: 1400, q: 4 },   // 7+ ч, до полуночи
+  { dur: 380, bed: 60, q: 2 }, { dur: 360, bed: 90, q: 3 },       // меньше 7, после полуночи
+  { dur: 500, bed: 1380, q: 4 }]);
+a.strictEqual(si.n, 5); a.deepStrictEqual(si.dur, { hi: 4.3, lo: 2.5 });
+a.deepStrictEqual(si.best, { h: 7, q: 4.5 });                     // 7–8 часов — лучше всего (по 2+ ночам)
+a.deepStrictEqual(si.bed, { early: 4.3, late: 2.5 });
 console.log('ok');
