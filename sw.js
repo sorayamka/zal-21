@@ -1,6 +1,6 @@
 // Сеть первой (чтобы обновления доходили), кэш — когда в зале нет интернета.
 // Всё приложение и видео кэшируются при установке: офлайн работает с первого запуска
-var C = 'zal2-v12';
+var C = 'zal2-v13';
 var FILES = ['./', 'index.html', 'style.css', 'logic.js', 'data.js', 'app.js', 'manifest.json', 'icon.png',
   'media/cableLat.mp4', 'media/cableRow.mp4', 'media/calf.mp4', 'media/chestPress.mp4', 'media/crunch.mp4', 'media/dbFlat.mp4',
   'media/facePull.mp4', 'media/hammer.mp4', 'media/inclineDB.mp4', 'media/lateral.mp4', 'media/legCurl.mp4', 'media/legExt.mp4',

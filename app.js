@@ -130,7 +130,7 @@ function figure(z, labels, small, subs) {
   // Свечение мышц — радиальный градиент, без фильтров и масок: Safari на iPhone рисовал размытие в маске с прямоугольными краями.
   // Ниже по телу свечение тише — как и сама фигура, которая растворяется к ногам
   function zs(f, g) { return (z || []).map(function (k) { return (ZONES[k] || []).map(function (e) {
-    return '<ellipse cx="' + e[0] + '" cy="' + e[1] + '" rx="' + e[2] * f + '" ry="' + e[3] * f + '" fill="url(#' + id + g + ')" opacity="' + Math.max(0.35, Math.min(1, 1.2 - e[1] / 420)).toFixed(2) + '"/>';
+    return '<ellipse cx="' + e[0] + '" cy="' + e[1] + '" rx="' + e[2] * f + '" ry="' + e[3] * f + '" fill="url(#' + id + g + ')" opacity="' + Math.max(0.5, Math.min(1, 1.35 - e[1] / 420)).toFixed(2) + '"/>';
   }).join(''); }).join(''); }
   var lab = (labels || []).map(function (k) {
     var L = LBL[k]; if (!L) return '';
@@ -151,8 +151,8 @@ function figure(z, labels, small, subs) {
     '<feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.35" result="g"/>' +
     '<feComposite in="b" in2="g" operator="arithmetic" k1=".28" k2=".78" k3="0" k4="0"/></filter>' +
     '<filter id="' + id + 'o" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur stdDeviation="5"/></filter>' +
-    '<radialGradient id="' + id + 'z"><stop offset="0" stop-color="#FF5A1A" stop-opacity=".95"/><stop offset=".5" stop-color="#FF6B2C" stop-opacity=".7"/><stop offset="1" stop-color="#FF6B2C" stop-opacity="0"/></radialGradient>' +
-    '<radialGradient id="' + id + 'y"><stop offset="0" stop-color="#FFB27E" stop-opacity=".85"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient></defs>' +
+    '<radialGradient id="' + id + 'z"><stop offset="0" stop-color="#FF5A1A" stop-opacity="1"/><stop offset=".55" stop-color="#FF6B2C" stop-opacity=".88"/><stop offset="1" stop-color="#FF6B2C" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="' + id + 'y"><stop offset="0" stop-color="#FFB27E" stop-opacity="1"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient></defs>' +
     '<g fill="#FFD7BC" opacity=".38" filter="url(#' + id + 'a)">' + FIG + '</g>' +
     '<g fill="url(#' + id + 'g)" filter="url(#' + id + 'm)">' + FIG + '</g>' +
     '<g fill="#fff" opacity=".28" filter="url(#' + id + 'h)" transform="translate(100 170) scale(.8 .86) translate(-100 -170)">' + FIG + '</g>' +
