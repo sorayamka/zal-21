@@ -185,10 +185,21 @@ function setArc(uid, p) {
 function render() {
   figN = 0;
   $('nav').hidden = !S.onb;
-  if (!S.onb) { $('main').innerHTML = onboarding(); return; }
+  if (!S.onb) { $('main').innerHTML = onboarding(); paintBar(); return; }
   document.querySelectorAll('#nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === tab); });
   $('main').innerHTML = { home: home, prog: progress, food: food, plan: plan }[tab]();
+  paintBar();
 }
+// Цвет системной полосы сверху = верх текущего экрана. Если iOS не пускает страницу под Dynamic Island
+// (иконка добавлена до black-translucent), полоса хотя бы сливается с фоном, а не торчит рамкой
+function paintBar() {
+  var sky = R ? $('run').querySelector('.in.sky') : (window.scrollY < 40 && $('main').querySelector('.sky'));
+  var c = sky ? (sky.classList.contains('calm') ? '#5A4A40' : '#D8662A') : '#0A0807';
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m.content !== c) m.content = c;
+  document.documentElement.style.backgroundColor = c; // и фон за пределами страницы при «резиновой» прокрутке вверх
+}
+window.addEventListener('scroll', function () { if (!R) paintBar(); }, { passive: true });
 
 /* ---------- Онбординг ---------- */
 function onboarding() {
@@ -693,6 +704,7 @@ function renderRun() {
   }
   $('run').innerHTML = h + '</div>';
   $('run').scrollTop = 0;
+  paintBar();
   if (R.end) { timer = setInterval(tickRun, 200); tickRun(); }
 }
 function tickRun() {
