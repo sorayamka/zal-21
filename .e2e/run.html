@@ -1,0 +1,76 @@
+<!doctype html><meta charset="utf-8"><body><iframe id=f style="width:390px;height:844px;border:0"></iframe><pre id=out></pre><script>
+var out=[],fails=0,w,d;function log(s){out.push(s);document.getElementById('out').textContent=out.join('\n')}
+function ok(c,m){if(!c)fails++;log((c?'PASS ':'FAIL ')+m)}
+var sl=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
+function q(s){return d.querySelector(s)} function click(s){var e=q(s);if(!e)throw new Error('нет элемента '+s);e.click()}
+function St(){return JSON.parse(w.localStorage.getItem('zal2')||'{}')} function T(){return w.TODAY}
+function L(){return St().log[T()]}
+async function boot(){localStorage.clear();f.src='../index.html';await new Promise(function(r){f.onload=r});w=f.contentWindow;d=f.contentDocument;
+ w.onerror=function(m,u,l){fails++;log('JS ERROR '+m+' @'+l)};w.confirm=function(){return true};await sl(200)}
+(async function(){try{
+ await boot();
+ // 1 онбординг
+ click('[data-a=ob][data-v="1"]');await sl(50);ok(q('#f_h'),'онбординг: шаг 1 открыт');
+ click('.obtop [data-a=ob]');await sl(50);ok(!q('#f_h')&&q('[data-a=ob][data-v="1"]'),'онбординг: назад на старт');
+ click('[data-a=ob][data-v="1"]');await sl(50);d.getElementById('f_h').value=182;click('[data-a=ob][data-v="2"]');await sl(50);
+ click('[data-a=train][data-v="1,3,5"]');await sl(50);click('[data-a=ob][data-v="3"]');await sl(50);
+ click('.obtop [data-a=ob]');await sl(50);ok(q('.opt.on'),'онбординг: назад на шаг 2 сохраняет выбор');
+ click('[data-a=ob][data-v="3"]');await sl(50);click('.lnk[data-a=obdone]');await sl(80);
+ var s=St();ok(s.onb===1&&s.prof.h===182&&String(s.train)==='1,3,5','онбординг: данные сохранены');
+ // 2 выбор другой тренировки → B
+ click('[data-a=pick]');await sl(80);ok(!q('#sheet').hidden,'выбор тренировки: окно открыто');
+ click('#sheet [data-a=go][data-v=B]');await sl(150);ok(!q('#run').hidden&&w.R.day==='B'&&q('#sheet').hidden,'старт тренировки B из окна');
+ ok(w.history.state&&w.history.state.r,'история браузера: тренировка записана');
+ // 3 подход + отмена
+ d.getElementById('f_kg').value=20;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
+ ok(L().ex.rdl.length===1&&w.R.phase==='rest','подход записан, идёт отдых');
+ click('#toast [data-a=undo]');await sl(80);ok((!L().ex.rdl||!L().ex.rdl.length)&&w.R.phase==='work','«Отменить» удаляет подход и возвращает к нему');
+ // 4 запись + исправление во время отдыха
+ d.getElementById('f_kg').value=20;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
+ click('.lnk[data-a=eset]');await sl(80);d.getElementById('f_erp').value=7;click('[data-a=saveset]');await sl(150);
+ ok(L().ex.rdl[0][1]===7&&w.R.phase==='rest','исправление подхода во время отдыха, таймер не сбит');
+ click('.foot [data-a=restdone]');await sl(80);
+ // 5 удаление подхода через чип
+ click('.done-row [data-a=eset]');await sl(80);click('[data-a=delset]');await sl(150);ok(!L().ex.rdl,'удаление подхода через чип');
+ // 6 пропуск + отмена
+ click('.foot [data-a=skip]');await sl(80);ok(L().skip.indexOf('rdl')>=0&&q('.ex-cap h2').textContent!=='Румынская тяга с гантелями','упражнение пропущено');
+ click('#toast [data-a=undo]');await sl(80);ok(L().skip.indexOf('rdl')<0&&q('.ex-cap h2').textContent==='Румынская тяга с гантелями','отмена пропуска');
+ // 7 смена дня (подходов нет)
+ click('[data-a=exlist]');await sl(80);click('#sheet [data-a=swap][data-v=C]');await sl(150);ok(w.R.day==='C'&&L().day==='C'&&q('#sheet').hidden,'смена тренировки на C');
+ // 8 отмена тренировки + undo
+ d.getElementById('f_kg').value=60;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
+ click('[data-a=exlist]');await sl(80);click('#sheet [data-a=cancelw]');await sl(200);
+ ok(!L()&&q('#run').hidden,'тренировка отменена и закрыта');
+ click('#toast [data-a=undo]');await sl(100);ok(L()&&L().ex.hack.length===1,'отмена отмены: подходы вернулись');
+ ok(q('.cap [data-a=go]')&&/Продолжить/.test(q('.cap [data-a=go]').textContent),'на главной — «Продолжить»');
+ // 9 до конца, затем «вернуться», снова закончить
+ click('.cap [data-a=go]');await sl(150);var n=0;
+ while(n++<80){if(q('#run [data-a=set]')){var k=d.getElementById('f_kg');if(k&&!k.value)k.value=10;click('#run [data-a=set]')}else if(q('#run .foot [data-a=restdone]'))click('#run .foot [data-a=restdone]');else if(q('#run [data-a=cstart]'))click('#run [data-a=cstart]');else if(q('#run .foot [data-a=cardio][data-v="1"]'))click('#run .foot [data-a=cardio][data-v="1"]');else break;await sl(25)}
+ ok(L().done===true&&L().cardio===true&&w.R.phase==='sum','тренировка завершена до конца');
+ click('#run [data-a=reopen]');await sl(100);ok(L().done===false&&w.R.phase!=='sum','«Вернуться к тренировке» снимает завершение');
+ click('[data-a=exlist]');await sl(80);click('#sheet [data-a=cardio][data-v="0"]');await sl(150);ok(L().done===true,'закончить сейчас из меню');
+ click('#run [data-a=exit]');await sl(200);ok(q('#run').hidden&&!w.R,'выход из итога');
+ // 10 история: правка и удаление
+ click('[data-t=prog]');await sl(80);click('[data-a=hist]');await sl(80);ok(q('#sheet .hx'),'история: тренировка открыта');
+ click('#sheet .hx [data-a=eset]');await sl(80);d.getElementById('f_ekg').value=65;click('[data-a=saveset]');await sl(120);
+ ok(q('#sheet .hx')&&L().ex.hack[0][0]===65,'история: подход исправлен, окно истории вернулось');
+ click('#sheet [data-a=delw]');await sl(150);ok(!L(),'история: тренировка удалена');
+ click('#toast [data-a=undo]');await sl(100);ok(L()&&L().done,'история: удаление отменено');
+ // 11 замеры
+ click('[data-a=weigh]');await sl(80);d.getElementById('f_bw').value=103.2;click('[data-a=saveW]');await sl(150);
+ ok(St().body[T()].w===103.2,'замер записан');
+ click('[data-a=wlist]');await sl(80);click('#sheet [data-a=delbody]');await sl(120);ok(!St().body[T()]&&q('#sheet .t2'),'замер удалён из списка');
+ click('#toast [data-a=undo]');await sl(100);ok(St().body[T()]&&St().body[T()].w===103.2,'удаление замера отменено');
+ // 12 системная «Назад»
+ click('[data-a=weigh]');await sl(80);w.history.back();await sl(200);ok(q('#sheet').hidden,'«Назад» закрывает окно');
+ click('[data-t=home]');await sl(50);
+ w.S.log[T()].done=false;w.save();w.render();click('.cap [data-a=go]');await sl(150);ok(!q('#run').hidden,'тренировка открыта снова');
+ click('[data-a=exlist]');await sl(80);w.history.back();await sl(200);ok(q('#sheet').hidden&&!q('#run').hidden,'«Назад» закрывает меню, тренировка остаётся');
+ w.history.back();await sl(200);ok(q('#run').hidden&&!w.R,'«Назад» закрывает тренировку');
+ // 13 фото
+ w.S.photo1=false;w.save();w.render();if(q('[data-a=photo]')){click('[data-a=photo]');await sl(80);ok(St().photo1===true,'фото отмечено');click('#toast [data-a=undo]');await sl(100);ok(!St().photo1,'отметка фото отменена')}else log('SKIP фото (не день 1)');
+ // 14 привычки — повторное нажатие снимает
+ click('[data-a=hab][data-v=p]');await sl(50);click('[data-a=hab][data-v=p]');await sl(50);ok(!St().hab[T()].p,'привычка снимается повторным нажатием');
+}catch(e){fails++;log('CRASH '+e.message+' '+(e.stack||'').split('\n')[1])}
+log('\nИТОГО: '+(fails?fails+' ОШИБОК':'ВСЁ ПРОШЛО'));document.title='DONE'})();
+</script>

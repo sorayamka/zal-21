@@ -1,0 +1,74 @@
+'use strict';
+/* Чистая логика без DOM — проверяется в test.js (node test.js) */
+
+// Неделя программы от даты старта: 1..3, дальше 4+ (продолжение)
+function weekOf(start, today) {
+  var d = Math.floor((Date.parse(today) - Date.parse(start)) / 864e5);
+  return d < 0 ? 1 : Math.floor(d / 7) + 1;
+}
+
+// Калории и БЖУ: Миффлин–Сан Жеор (муж.), активность 1.55 (3 силовые + 8–10к шагов),
+// дефицит 500 ккал — потолок по Murphy & Koehler 2022, больше — режет мышцы
+function macros(p) {
+  var bmr = 10 * p.w + 6.25 * p.h - 5 * p.age + 5;
+  var tdee = Math.round(bmr * 1.55);
+  var kcal = Math.max(tdee - 500, Math.round(bmr)); // ниже BMR не опускаемся
+  var prot = Math.round(p.w * 1.8), fat = Math.round(p.w * 0.8);
+  var carb = Math.max(0, Math.round((kcal - prot * 4 - fat * 9) / 4));
+  return { bmr: Math.round(bmr), tdee: tdee, kcal: kcal, prot: prot, fat: fat, carb: carb };
+}
+
+// Двойная прогрессия: все подходы на верх диапазона — добавь вес; ниже низа — сбавь
+function hint(last, lo, hi, inc) {
+  if (!last || !last.length) return { t: 'new', msg: 'Первый раз: подбери вес, чтобы оставалось ' };
+  var kg = Math.max.apply(null, last.map(function (s) { return +s[0] || 0; }));
+  var reps = last.map(function (s) { return +s[1] || 0; });
+  if (reps.every(function (r) { return r >= hi; })) return { t: 'up', kg: kg + inc, msg: 'Все подходы на ' + hi + ' — бери ' + (kg + inc) + ' кг' };
+  if (reps.some(function (r) { return r < lo; })) return { t: 'down', kg: kg, msg: 'Не добрал ' + lo + ' — оставь ' + kg + ' кг, добей повторы' };
+  return { t: 'same', kg: kg, msg: kg + ' кг — добавь +1 повтор в каждом подходе' };
+}
+
+// Скользящее среднее веса за 7 последних записей — суточные скачки воды не врут
+function avg7(list) {
+  var v = list.slice(-7);
+  return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length * 10) / 10 : null;
+}
+
+var NEXT = { A: 'B', B: 'C', C: 'A' };
+function addDays(iso, n) { var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function wday(iso) { return new Date(iso + 'T12:00:00Z').getUTCDay(); } // 0 = вс
+
+// План на даты: сделанные — из журнала, будущие тренировочные — по кругу A→B→C, прошедшие без записи — пропуск
+// log: { 'YYYY-MM-DD': { day:'A', done:true } }, train: дни недели [1,3,5]
+function schedule(dates, today, log, train) {
+  var done = Object.keys(log).filter(function (d) { return log[d].done; }).sort();
+  var before = done.filter(function (d) { return d < dates[0]; });
+  var last = before.length ? log[before[before.length - 1]].day : null, out = {};
+  dates.forEach(function (d) {
+    var L = log[d];
+    if (L && L.done) { out[d] = { day: L.day, st: 'done' }; last = L.day; }
+    else if (train.indexOf(wday(d)) >= 0) {
+      if (d < today) out[d] = { st: 'miss' };
+      else { last = last ? NEXT[last] : 'A'; out[d] = { day: last, st: d === today ? 'today' : 'plan' }; }
+    } else out[d] = { st: 'rest' };
+  });
+  return out;
+}
+
+// Оценка недели 0–100: половина — тренировки по плану, половина — привычки (4 в день)
+// Сегодня считается, только если уже что-то сделано — незаконченный день не штрафуем. null — оценивать пока нечего
+function score(dates, today, log, hab, train) {
+  function marks(d) { var x = hab[d] || {}; return ['p', 'k', 's', 'z'].filter(function (k) { return x[k]; }).length; }
+  var tr = dates.filter(function (d) { return train.indexOf(wday(d)) >= 0 && (d < today || d === today && log[d] && log[d].done); });
+  var hd = dates.filter(function (d) { return d < today || d === today && marks(d); });
+  var extra = dates.filter(function (d) { return log[d] && log[d].done && tr.indexOf(d) < 0 && d <= today; }).length; // тренировка в день отдыха
+  if (!tr.length && !hd.length && !extra) return null;
+  var done = tr.filter(function (d) { return log[d] && log[d].done; }).length + extra;
+  var h = hd.reduce(function (s, d) { return s + marks(d); }, 0);
+  var t = tr.length ? Math.min(1, done / tr.length) : (done ? 1 : null), hp = hd.length ? h / (4 * hd.length) : null;
+  if (t === null) return Math.round(100 * hp);
+  if (hp === null) return Math.round(100 * t);
+  return Math.round(50 * t + 50 * hp);
+}
+
+if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday };
