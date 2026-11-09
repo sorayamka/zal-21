@@ -138,13 +138,13 @@ function figure(z, labels, small, subs) {
   }).join('');
   return '<div class="fig' + (small ? ' sm' : '') + '" aria-hidden="true"><svg viewBox="-100 0 400 400" preserveAspectRatio="xMidYMid meet">' +
     '<defs><linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".96"/><stop offset=".42" stop-color="#fff" stop-opacity=".72"/><stop offset=".74" stop-color="#fff" stop-opacity=".26"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
-    '<filter id="' + id + 'a" x="-60%" y="-30%" width="220%" height="160%"><feGaussianBlur stdDeviation="22"/></filter>' +
-    '<filter id="' + id + 'b" x="-30%" y="-20%" width="160%" height="140%"><feGaussianBlur stdDeviation="4"/></filter>' +
-    '<filter id="' + id + 'h" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>' +
-    '<filter id="' + id + 'm" x="-30%" y="-20%" width="160%" height="140%"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/>' +
+    '<filter id="' + id + 'a" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur stdDeviation="22"/></filter>' +
+    '<filter id="' + id + 'b" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur stdDeviation="4"/></filter>' +
+    '<filter id="' + id + 'h" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur stdDeviation="9"/></filter>' +
+    '<filter id="' + id + 'm" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/>' +
     '<feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.35" result="g"/>' +
     '<feComposite in="b" in2="g" operator="arithmetic" k1=".28" k2=".78" k3="0" k4="0"/></filter>' +
-    '<mask id="' + id + 'k"><g fill="url(#' + id + 'g)" filter="url(#' + id + 'b)">' + FIG + '</g></mask></defs>' +
+    '<mask id="' + id + 'k" maskUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><g fill="url(#' + id + 'g)" filter="url(#' + id + 'b)">' + FIG + '</g></mask></defs>' +
     '<g fill="#FFD7BC" opacity=".38" filter="url(#' + id + 'a)">' + FIG + '</g>' +
     '<g fill="url(#' + id + 'g)" filter="url(#' + id + 'm)">' + FIG + '</g>' +
     '<g fill="#fff" opacity=".28" filter="url(#' + id + 'h)" transform="translate(100 170) scale(.8 .86) translate(-100 -170)">' + FIG + '</g>' +

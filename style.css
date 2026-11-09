@@ -55,7 +55,7 @@ h3{font-size:15px;font-weight:500}
 
 /* туманная фигура */
 .fig{position:relative;margin:-6px -18px 0;height:340px}
-.fig svg{position:absolute;inset:0;width:100%;height:100%}
+.fig svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* свечение выходит за рамку — не срезаем */
 .fig.sm{height:300px}
 
 .cap{text-align:center;position:relative;margin-top:-18px}
