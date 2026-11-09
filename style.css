@@ -294,3 +294,11 @@ nav .go svg.i{width:22px;height:22px;stroke-width:2}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* во время тренировки плашка сверху — внизу кнопки и счётчики */
 body.running #toast{top:calc(56px + env(safe-area-inset-top));bottom:auto}
+/* отказ: акцентная плашка на последнем подходе */
+.fail{display:flex;flex-direction:column;gap:3px;max-width:330px;margin:12px auto 0;padding:10px 14px;border-radius:16px;text-align:left;
+  background:linear-gradient(180deg,rgba(255,107,44,.16),rgba(255,107,44,.06));border:1px solid rgba(255,107,44,.38)}
+.fail b{display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px;color:var(--ac3)}
+.fail b svg.i{width:15px;height:15px;color:var(--ac2)}
+.fail span{font-size:12px;color:var(--t2)}
+/* подход до отказа: видео ниже, чтобы плашка и счётчики поместились */
+.in.fl .stage{height:min(26vh,240px)}

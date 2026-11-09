@@ -23,25 +23,25 @@ async function boot(){localStorage.clear();f.src='../index.html';await new Promi
  ok(w.history.state&&w.history.state.r,'история браузера: тренировка записана');
  // 3 подход + отмена
  d.getElementById('f_kg').value=20;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
- ok(L().ex.rdl.length===1&&w.R.phase==='rest','подход записан, идёт отдых');
- click('#toast [data-a=undo]');await sl(80);ok((!L().ex.rdl||!L().ex.rdl.length)&&w.R.phase==='work','«Отменить» удаляет подход и возвращает к нему');
+ ok(L().ex.inclineDB.length===1&&w.R.phase==='rest','подход записан, идёт отдых');
+ click('#toast [data-a=undo]');await sl(80);ok((!L().ex.inclineDB||!L().ex.inclineDB.length)&&w.R.phase==='work','«Отменить» удаляет подход и возвращает к нему');
  // 4 запись + исправление во время отдыха
  d.getElementById('f_kg').value=20;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
  click('.lnk[data-a=eset]');await sl(80);d.getElementById('f_erp').value=7;click('[data-a=saveset]');await sl(150);
- ok(L().ex.rdl[0][1]===7&&w.R.phase==='rest','исправление подхода во время отдыха, таймер не сбит');
+ ok(L().ex.inclineDB[0][1]===7&&w.R.phase==='rest','исправление подхода во время отдыха, таймер не сбит');
  click('.foot [data-a=restdone]');await sl(80);
  // 5 удаление подхода через чип
- click('.done-row [data-a=eset]');await sl(80);click('[data-a=delset]');await sl(150);ok(!L().ex.rdl,'удаление подхода через чип');
+ click('.done-row [data-a=eset]');await sl(80);click('[data-a=delset]');await sl(150);ok(!L().ex.inclineDB,'удаление подхода через чип');
  // 6 пропуск + отмена
- click('.foot [data-a=skip]');await sl(80);ok(L().skip.indexOf('rdl')>=0&&q('.ex-cap h2').textContent!=='Румынская тяга с гантелями','упражнение пропущено');
- click('#toast [data-a=undo]');await sl(80);ok(L().skip.indexOf('rdl')<0&&q('.ex-cap h2').textContent==='Румынская тяга с гантелями','отмена пропуска');
+ click('.foot [data-a=skip]');await sl(80);ok(L().skip.indexOf('inclineDB')>=0&&q('.ex-cap h2').textContent!=='Жим гантелей на наклонной 30°','упражнение пропущено');
+ click('#toast [data-a=undo]');await sl(80);ok(L().skip.indexOf('inclineDB')<0&&q('.ex-cap h2').textContent==='Жим гантелей на наклонной 30°','отмена пропуска');
  // 7 смена дня (подходов нет)
  click('[data-a=exlist]');await sl(80);click('#sheet [data-a=swap][data-v=C]');await sl(150);ok(w.R.day==='C'&&L().day==='C'&&q('#sheet').hidden,'смена тренировки на C');
  // 8 отмена тренировки + undo
  d.getElementById('f_kg').value=60;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
  click('[data-a=exlist]');await sl(80);click('#sheet [data-a=cancelw]');await sl(200);
  ok(!L()&&q('#run').hidden,'тренировка отменена и закрыта');
- click('#toast [data-a=undo]');await sl(100);ok(L()&&L().ex.hack.length===1,'отмена отмены: подходы вернулись');
+ click('#toast [data-a=undo]');await sl(100);ok(L()&&L().ex.dbBench.length===1,'отмена отмены: подходы вернулись');
  ok(q('.cap [data-a=go]')&&/Продолжить/.test(q('.cap [data-a=go]').textContent),'на главной — «Продолжить»');
  // 9 до конца, затем «вернуться», снова закончить
  click('.cap [data-a=go]');await sl(150);var n=0;
@@ -53,7 +53,7 @@ async function boot(){localStorage.clear();f.src='../index.html';await new Promi
  // 10 история: правка и удаление
  click('[data-t=prog]');await sl(80);click('[data-a=hist]');await sl(80);ok(q('#sheet .hx'),'история: тренировка открыта');
  click('#sheet .hx [data-a=eset]');await sl(80);d.getElementById('f_ekg').value=65;click('[data-a=saveset]');await sl(120);
- ok(q('#sheet .hx')&&L().ex.hack[0][0]===65,'история: подход исправлен, окно истории вернулось');
+ ok(q('#sheet .hx')&&L().ex.dbBench[0][0]===65,'история: подход исправлен, окно истории вернулось');
  click('#sheet [data-a=delw]');await sl(150);ok(!L(),'история: тренировка удалена');
  click('#toast [data-a=undo]');await sl(100);ok(L()&&L().done,'история: удаление отменено');
  // 11 замеры
@@ -97,11 +97,24 @@ async function boot(){localStorage.clear();f.src='../index.html';await new Promi
  click('[data-t=plan]');await sl(80);click('[data-a=ics]');await sl(150);
  var txt=got?await got.text():'';var nEv=(txt.match(/BEGIN:VEVENT/g)||[]).length;
  ok(nEv>=8&&txt.indexOf('TRIGGER:-PT30M')>0&&txt.indexOf('T180000')>0,'календарь: '+nEv+' тренировок с напоминанием');
- // 18 таймер iPhone
- click('[data-a=sc]');await sl(80);ok(St().sc&&q('#sheet ol'),'таймер iPhone включён, инструкция открыта');
- click('#sheet [data-a=close]');await sl(150);click('[data-t=home]');await sl(50);click('.cap [data-a=go]');await sl(150);
+ // 18 уведомления ntfy (сеть перехвачена — ничего не отправляем)
+ var calls=[];w.fetch=function(u,o){calls.push([(o&&o.method)||'GET',u]);return Promise.resolve({})};
+ click('[data-a=nt]');await sl(100);ok(/^zal21-[0-9a-f]{18}$/.test(St().nt)&&q('#sheet .sets'),'уведомления: создан случайный канал, инструкция открыта');
+ click('#sheet [data-a=nttest]');await sl(50);ok(calls.some(function(c){return c[0]==='POST'&&/\/test-\d+\?/.test(c[1])&&/delay=10s/.test(c[1])}),'кнопка «Проверить» шлёт уведомление через 10 с');
+ w.history.back();await sl(200);click('[data-t=home]');await sl(50);click('.cap [data-a=go]');await sl(150);
  d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
- var sl2=q('a.chip[href^="shortcuts://run-shortcut"]');ok(sl2&&/text=\d+/.test(sl2.getAttribute('href')),'на отдыхе есть кнопка «Таймер iPhone»');
+ var n0=calls.length;w.ntfyRest();await sl(30);var c=calls[calls.length-1];
+ ok(calls.length===n0+1&&/\/t\d+\?/.test(c[1])&&/delay=\d+s/.test(c[1])&&c[1].indexOf(encodeURIComponent('Дальше'))>0,'свернул на отдыхе — уведомление на конец отдыха');
+ w.ntfyRest();await sl(30);ok(calls.length===n0+1,'повторно не дублируется');
+ ok(!q('a[href^="shortcuts://"]')&&/заблокировать телефон/.test(q('#run').textContent),'подсказка «можно заблокировать телефон»');
+ // 19 отказ: неделя 2, день B — база без отказа, тяга блока — отказ в последнем
+ w.S.start=w.addDays(T(),-8);w.save();click('#run [data-a=exit]');await sl(200);
+ delete w.S.log[T()];w.save();w.render();click('[data-a=pick]');await sl(80);click('#sheet [data-a=go][data-v=B]');await sl(150);
+ var seen={};for(var g=0;g<6;g++){var nm=q('.ex-cap h2').textContent,ey=q('.ex-cap .eyebrow').textContent;seen[nm+'|'+ey]=!!q('.ex-cap .fail');
+  var kk=d.getElementById('f_kg');if(kk&&!kk.value)kk.value=30;click('#run [data-a=set]');await sl(60);if(q('.foot [data-a=restdone]')){click('.foot [data-a=restdone]');await sl(60)}}
+ ok(seen['Жим гантелей на наклонной 30°|Подход 3 из 3']===false,'жим на наклонной: последний подход без отказа');
+ ok(seen['Тяга горизонтального блока|Подход 3 из 3 · до отказа']===true,'тяга блока: последний подход — до отказа');
+ ok(seen['Тяга горизонтального блока|Подход 1 из 3']===false,'первые подходы — не до отказа');
 }catch(e){fails++;log('CRASH '+e.message+' '+(e.stack||'').split('\n')[1])}
 log('\nИТОГО: '+(fails?fails+' ОШИБОК':'ВСЁ ПРОШЛО'));document.title='DONE'})();
 </script>
