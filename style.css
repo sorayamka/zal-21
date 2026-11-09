@@ -34,7 +34,7 @@ h3{font-size:15px;font-weight:500}
   linear-gradient(180deg,#D8662A 0%,#A9461B 14%,#6A2C12 30%,#2C150B 48%,#120C09 62%,var(--bg) 74%)}
 .sky.calm{background:radial-gradient(90% 38% at 50% 0%,rgba(220,200,185,.22),transparent 70%),
   linear-gradient(180deg,#5A4A40 0%,#3A2E27 18%,#1C1613 42%,var(--bg) 66%)}
-.top{display:flex;align-items:center;justify-content:space-between;height:44px;padding-top:env(safe-area-inset-top)}
+.top{display:flex;align-items:center;justify-content:space-between;height:calc(44px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top)}
 .logo{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500;letter-spacing:-.01em}
 .logo svg{width:18px;height:18px}
 .chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;font-size:12px;color:var(--t1);
@@ -215,7 +215,7 @@ button.trio-b{text-align:left}
 @keyframes rise{from{transform:translateY(24px);opacity:.5}}
 
 /* ---------- Списки, план, еда ---------- */
-.pg-h{display:flex;align-items:center;justify-content:space-between;padding:22px 0 4px}
+.pg-h{display:flex;align-items:center;justify-content:space-between;padding:calc(22px + env(safe-area-inset-top)) 0 4px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:99px;background:var(--c1);border:1px solid var(--hair);margin-top:14px}
 .seg button{height:38px;border-radius:99px;color:var(--t2);font-size:13px;transition:background-color .2s,color .2s}
 .seg button.on{background:var(--t1);color:#16100C;font-weight:500}
