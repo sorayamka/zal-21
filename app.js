@@ -2,6 +2,7 @@
 /* Зал · 21 день. Все данные — в localStorage этого устройства, ключ zal2 */
 var KEY = 'zal2', S = load(), TODAY = iso(new Date());
 var tab = 'home', planDay = 'A', ob = 0, R = null, timer = null, wakeLock = null, audio = null, figN = 0, editFrom = false;
+var sel = TODAY, drag = null, swallowUntil = 0; // выбранный день на главной и свайп по датам
 if (history.state && (history.state.r || history.state.s)) history.replaceState(null, ''); // после перезагрузки окон нет
 ['log', 'body', 'hab'].forEach(function (k) { S[k] = S[k] || {}; });
 if (S.prof && !S.train) { S.train = [1, 3, 5]; S.onb = 1; } // данные первой версии
@@ -207,27 +208,52 @@ function stepper(k, v, label, step) {
 }
 
 /* ---------- Сегодня ---------- */
+// Что в этот день: сделано / пропуск / отдых / план. Будущее — по кругу A→B→C от сегодняшнего дня
+function dayInfo(d) {
+  var L = S.log[d] || {}, started = !!(L.ex && Object.keys(L.ex).length), range = [];
+  if (d >= TODAY) { for (var x = TODAY; x <= d; x = addDays(x, 1)) range.push(x); } else range = [d];
+  var st = schedule(range, TODAY, S.log, S.train)[d];
+  return { L: L, started: started, st: st.st, day: L.day || st.day };
+}
 function home() {
-  var wd = weekDates(TODAY), n = dayNo(), w = W();
-  var t = schedule(wd, TODAY, S.log, S.train)[TODAY], L = S.log[TODAY] || {}, started = L.ex && Object.keys(L.ex).length;
-  var mode = L.done ? 'done' : (t.st === 'today' || started) ? 'train' : 'rest';
-  var day = L.day || t.day || nextLetter(), D = DAYS[day];
+  var wd = weekDates(TODAY), n = dayNo(), w = W(), isToday = sel === TODAY, info = dayInfo(sel), L = info.L, started = info.started;
+  var mode = isToday ? (L.done ? 'done' : (info.st === 'today' || started) ? 'train' : 'rest')
+    : sel < TODAY ? (L.done || started ? 'past' : info.st === 'miss' ? 'miss' : 'rest') : (info.st === 'plan' ? 'future' : 'rest');
+  var day = info.day || nextLetter(), D = DAYS[day];
 
-  // даты на дуге: сегодня в центре, по 3 дня в стороны
-  var around = []; for (var o = -3; o <= 3; o++) around.push(addDays(TODAY, o));
-  var sc = schedule(around, TODAY, S.log, S.train);
-  var h = '<section class="sky grain' + (mode === 'rest' ? ' calm' : '') + '"><div class="top"><div class="logo">' + ic('sun') + 'Зал</div>' +
-    '<span class="chip">' + ic('target') + (n > 21 ? '21 день пройден' : 'День ' + Math.max(1, n) + ' из 21') + '</span></div><div class="dates">' +
+  // даты на дуге вокруг выбранного дня; листаются свайпом и нажатием
+  var around = []; for (var o = -3; o <= 3; o++) around.push(addDays(sel, o));
+  var fut = [], pastSc = {}; around.forEach(function (d) { if (d < TODAY) pastSc[d] = schedule([d], TODAY, S.log, S.train)[d]; else fut.push(d); });
+  var futSc = fut.length ? schedule(fut[0] === TODAY ? fut : [TODAY].concat(fut), TODAY, S.log, S.train) : {};
+  var h = '<section class="sky grain' + (/rest|miss/.test(mode) ? ' calm' : '') + '"><div class="top"><div class="logo">' + ic('sun') + 'Зал</div>' +
+    (isToday ? '<span class="chip">' + ic('target') + (n > 21 ? '21 день пройден' : 'День ' + Math.max(1, n) + ' из 21') + '</span>'
+      : '<button class="chip" data-a="sel" data-v="' + TODAY + '">' + ic('back') + 'К сегодня</button>') + '</div>' +
+    '<div class="dates" aria-label="Дни: листай или нажми">' +
     around.map(function (d, i) {
-      var off = i - 3, a = Math.abs(off), st = sc[d].st;
-      return '<div class="dt ' + st + (off ? '' : ' on') + '" style="left:calc(50% + ' + off * 54 + 'px);top:' + (a * a * 5) + 'px;opacity:' + (1 - a * 0.2) + '"><b>' + +d.slice(8) + '</b>' + WD[wday(d)] + '<i></i></div>';
+      var off = i - 3, a = Math.abs(off), st = (pastSc[d] || futSc[d] || { st: 'rest' }).st;
+      return '<button class="dt ' + st + (off ? '' : ' on') + (d === TODAY ? ' now' : '') + '" data-a="sel" data-v="' + d + '" aria-label="' + dayName(d) + '" style="left:calc(50% + ' + off * 54 + 'px);top:' + (a * a * 5) + 'px;opacity:' + (1 - a * 0.2) + '"><b>' + +d.slice(8) + '</b>' + WD[wday(d)] + '<i></i></button>';
     }).join('') + '</div>';
 
+  var when = isToday ? '' : dayName(sel);
   if (mode === 'rest') {
-    h += figure([], []) + '<div class="cap"><span class="eyebrow">Восстановление</span><h1>День отдыха</h1>' +
-      '<p>Мышцы растут, пока ты отдыхаешь. Сегодня — прогулка 40–60 минут</p>' +
+    h += figure([], []) + '<div class="cap"><span class="eyebrow">' + (when || 'Восстановление') + '</span><h1>День отдыха</h1>' +
+      '<p>Мышцы растут, пока ты отдыхаешь. ' + (isToday ? 'Сегодня — ' : '') + 'прогулка 40–60 минут</p>' +
       '<div class="meta"><span>' + ic('walk') + '8–10 тыс. шагов</span><span>' + ic('moon') + 'сон 7+ часов</span></div>' +
-      '<button class="pb gh" data-a="go" data-v="' + day + '">Всё равно тренироваться</button></div>';
+      (isToday ? '<button class="pb gh" data-a="go" data-v="' + day + '">Всё равно тренироваться</button>' : '') + '</div>';
+  } else if (mode === 'miss') {
+    h += figure([], []) + '<div class="cap"><span class="eyebrow">' + when + '</span><h1>Пропущено</h1>' +
+      '<p>Ничего страшного: следующая тренировка продолжит круг с того же места</p></div>';
+  } else if (mode === 'past') {
+    var tt = totals(L);
+    h += figure(DAYS[L.day].z, DAYS[L.day].z.slice(0, 3)) + '<div class="cap"><span class="eyebrow">' + (L.done ? 'Сделано' : 'Не закончена') + ' · ' + when + '</span>' +
+      '<h1>' + esc(DAYS[L.day].t) + '</h1><p>' + tt.sets + ' ' + plural(tt.sets, 'подход', 'подхода', 'подходов') + ' · ' + Math.round(tt.ton).toLocaleString('ru') + ' кг' + (L.cardio ? ' · ходьба' : '') + '</p>' +
+      '<button class="pb gh" data-a="hist" data-v="' + sel + '">Открыть и исправить</button></div>';
+  } else if (mode === 'future') {
+    var nm = D.list.slice(0, 3).map(function (it) { return EX[it.e].n.toLowerCase(); }).join(', ');
+    h += figure(D.z, D.z.slice(0, 3), false, zoneSubs(day)) + '<div class="cap"><span class="eyebrow">Запланировано · ' + when + '</span>' +
+      '<h1>' + esc(D.t) + '</h1><p>' + esc(nm.charAt(0).toUpperCase() + nm.slice(1)) + ' и ещё ' + (D.list.length - 3) + '</p>' +
+      '<div class="meta"><span>' + ic('clock') + '~' + minutes(day) + ' мин</span><span>Тренировка ' + day + '</span></div>' +
+      '<button class="pb gh" data-a="pplan" data-v="' + day + '">Посмотреть упражнения</button></div>';
   } else {
     var names = D.list.slice(0, 3).map(function (it) { return EX[it.e].n.toLowerCase(); }).join(', ');
     h += figure(D.z, D.z.slice(0, 3), false, zoneSubs(day)) + '<div class="cap"><span class="eyebrow">' + (mode === 'done' ? 'Сделано сегодня' : 'Тренировка ' + day) + '</span>' +
@@ -382,6 +408,12 @@ function plan() {
     }).join('') + '</div></div>';
   h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('book') + '</span>Почему так</span><span class="t3 xs">исследования</span></div><div style="margin-top:6px">' +
     RULES.map(function (r) { return '<div class="rule"><b style="font-weight:400">' + esc(r[0]) + '</b><p>' + esc(r[1]) + '</p><div class="src">' + esc(r[2]) + '</div></div>'; }).join('') + '</div></div>';
+  h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('clock') + '</span>Напоминания</span><span class="t3 xs">iPhone и Android</span></div>' +
+    '<p class="t2 sm" style="margin-top:12px">Тренировки попадут в Календарь телефона — он сам напомнит за 30 минут, даже если приложение закрыто</p>' +
+    '<label class="t2 xs" style="display:block;margin-top:12px">Во сколько обычно тренируешься<input type="time" id="rtime" class="date-in" value="' + (S.rtime || '18:00') + '"></label>' +
+    '<button class="pb wide" style="margin-top:12px" data-a="ics">' + ic('plus') + 'Добавить в Календарь</button>' +
+    '<button class="opt' + (S.sc ? ' on' : '') + '" style="margin-top:14px" data-a="sc"><span>Таймер отдыха в iPhone<small>звонит на заблокированном экране</small></span><i class="rb"></i></button>' +
+    '<button class="lnk" data-a="schelp">Как настроить таймер — 2 минуты</button></div>';
   h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('gear') + '</span>Настройки</span></div><p class="t2 xs" style="margin-top:14px">Дни тренировок</p>' + trainOpts(S.train) +
     '<label class="t2 xs" style="display:block;margin-top:16px">Начало программы<input type="date" id="sd" class="date-in" value="' + S.start + '"></label>' +
     '<div class="pair" style="grid-template-columns:1fr 1fr;margin-top:16px"><button class="pb gh" data-a="exp">Сохранить копию</button><button class="pb gh" data-a="imp">Загрузить</button></div>' +
@@ -441,6 +473,32 @@ function wlistSheet() {
   }).join('') : '<p class="t2 sm">Замеров пока нет</p>') + '</div>');
 }
 // После правки данных — пересчитать, где мы в тренировке. reset: после «Отменить» таймер отдыха не сохраняем
+// Тренировки с сегодня до конца 21 дня (минимум 3 недели вперёд) → .ics для Календаря
+function exportIcs() {
+  var time = S.rtime || '18:00', end = addDays(S.start, 20), url = location.href.split('#')[0], range = [];
+  if (end < addDays(TODAY, 20)) end = addDays(TODAY, 20);
+  for (var d = TODAY; d <= end; d = addDays(d, 1)) range.push(d);
+  var sc = schedule(range, TODAY, S.log, S.train);
+  var ev = range.filter(function (d) { return sc[d].st === 'plan' || sc[d].st === 'today'; }).map(function (d) {
+    var D = DAYS[sc[d].day];
+    return { date: d, time: time, min: minutes(sc[d].day), title: 'Тренировка ' + sc[d].day + ' · ' + D.t,
+      desc: D.list.map(function (it) { return '• ' + EX[it.e].n; }).join('\n') + '\n\nОткрыть: ' + url };
+  });
+  if (!ev.length) { toast('Нет запланированных тренировок'); return; }
+  var txt = icsCal(ev, 30, new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z');
+  var blob = new Blob([txt], { type: 'text/calendar;charset=utf-8' }), href = URL.createObjectURL(blob);
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) location.href = href; // iOS сам предложит «Добавить всё» в Календарь
+  else { var lk = document.createElement('a'); lk.href = href; lk.download = 'zal-21.ics'; document.body.appendChild(lk); lk.click(); lk.remove(); }
+  toast(ev.length + ' ' + plural(ev.length, 'тренировка', 'тренировки', 'тренировок') + ' — открой файл и нажми «Добавить всё»');
+}
+function scHelp() {
+  sheet('<h2>Таймер на заблокированном экране</h2><p class="t2 sm" style="margin-top:6px">Свёрнутое веб-приложение на iPhone не может звонить само. Быстрые команды запускают системный таймер — он прозвенит, даже если телефон в кармане</p>' +
+    '<ol><li>Открой приложение «Команды» → нажми «+»</li><li>Назови команду ровно <b style="color:var(--t1)">Отдых</b></li>' +
+    '<li>Добавь действие «Запустить таймер» (раздел «Часы»)</li><li>Нажми на длительность → «Ввод команды», единицы — <b style="color:var(--t1)">секунды</b></li>' +
+    '<li>Готово. На экране отдыха нажимай «Таймер iPhone»</li></ol>' +
+    '<p class="t3 xs">Первый раз iPhone спросит разрешение открыть «Команды» — разреши</p>' +
+    '<button class="pb wide" style="margin-top:14px" data-a="close">Понятно</button>');
+}
 function syncRun(reset) {
   if (!R) return;
   var L = S.log[TODAY];
@@ -490,6 +548,10 @@ function startRun(day) {
   } else hideSheet();
   R = { day: L.day, phase: 'work', jump: null };
   if (!pos()) R.phase = L.done ? 'sum' : 'cardio';
+  // таймер, сохранённый до выгрузки приложения: продолжаем с правильным остатком
+  var rt = S.rt;
+  if (rt && rt.d === TODAY && !L.done && rt.end > Date.now() && (rt.ph === 'rest' ? R.phase === 'work' : R.phase === 'cardio')) { R.phase = rt.ph; R.end = rt.end; R.len = rt.len; }
+  else if (rt) { delete S.rt; save(); }
   $('run').hidden = false; document.body.style.overflow = 'hidden'; document.body.classList.add('running');
   if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }).catch(function () {});
   renderRun();
@@ -555,6 +617,7 @@ function renderRun() {
       '<div class="grow"></div><div class="center"><div class="gw">' + arc(1, 'gr', true, 'ra') +
       '<div class="v"><span class="num-xl" id="rt">' + (card ? '15:00' : mmss(R.len)) + '</span></div></div>' +
       '<span class="eyebrow" id="rs" style="margin-top:14px">' + (card ? 'ходьба в горку' : 'отдыхай') + '</span>' +
+      (S.sc && R.end ? '<div><a class="chip" style="margin-top:12px" href="shortcuts://run-shortcut?name=' + encodeURIComponent('Отдых') + '&input=text&text=' + Math.max(1, Math.ceil((R.end - Date.now()) / 1e3)) + '">' + ic('clock') + 'Таймер iPhone</a></div>' : '') +
       (card ? '<h2 style="margin-top:8px">15 минут ходьбы</h2><p class="t2 sm" style="margin:6px auto 0;max-width:300px">Беговая дорожка: наклон 10%, 5 км/ч. Дыши ровно — так, чтобы мог говорить</p>'
         : nx ? '<button class="nx" data-a="restdone">' + thumb(nx.e) + '<div><div class="t3 xs">Дальше</div><div>' + esc(EX[nx.e].n) + '</div><div class="t2 xs">подход ' + (np.s + 1) + ' из ' + setsOf(R.day, np.i) + '</div></div></button>' : '') +
       (!card && R.last && L.ex[R.last.id] && L.ex[R.last.id][R.last.k] ? '<button class="lnk" data-a="eset" data-v="' + TODAY + '|' + R.last.id + '|' + R.last.k + '">Записано ' +
@@ -575,7 +638,7 @@ function tickRun() {
   setArc('ra', left / R.len);
   if ($('rt')) $('rt').textContent = mmss(Math.ceil(left));
   if (!left) {
-    clearInterval(timer); R.end = null;
+    clearInterval(timer); R.end = null; if (R.phase === 'rest') { delete S.rt; save(); }
     if ($('rs')) $('rs').textContent = R.phase === 'rest' ? 'пора — следующий подход' : 'готово';
     if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
     beep();
@@ -605,12 +668,12 @@ function logSet(i) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} // звук разрешается только после нажатия
   R.jump = null;
   if (!pos()) { R.phase = 'cardio'; R.end = null; }
-  else { R.phase = 'rest'; R.len = it.rest; R.end = Date.now() + it.rest * 1e3; }
+  else { R.phase = 'rest'; R.len = it.rest; R.end = Date.now() + it.rest * 1e3; S.rt = { d: TODAY, end: R.end, len: R.len, ph: 'rest' }; save(); }
   renderRun();
 }
 function finish(cardio) {
   var L = S.log[TODAY];
-  act('Тренировка сохранена', function () { L.cardio = cardio; L.done = true; L.t1 = Date.now(); });
+  act('Тренировка сохранена', function () { L.cardio = cardio; L.done = true; L.t1 = Date.now(); delete S.rt; });
   R.phase = 'sum'; R.end = null; renderRun();
 }
 function summary(inRun) {
@@ -654,6 +717,9 @@ document.addEventListener('click', function (e) {
     tab = b.dataset.t; render(); window.scrollTo(0, 0); return;
   }
   if (a === 'undo') { undo(); return; }
+  // клик, который браузер шлёт сразу после свайпа по датам, — не выбор дня
+  if (a === 'sel') { if (Date.now() < swallowUntil && b.closest('.dates')) return; sel = v; render(); return; }
+  if (a === 'pplan') { planDay = v; tab = 'plan'; render(); window.scrollTo(0, 0); return; }
   if (a === 'ob') {
     if (ob === 1) { var P = readProf(); if (!P && +v > ob) return; if (P) S.prof = P; } // назад — без проверки, данные не теряем
     if (ob === 2) S.train = S.train || [1, 3, 5];
@@ -709,6 +775,9 @@ document.addEventListener('click', function (e) {
     if (R) syncRun(); else startRun(S.log[TODAY].day);
   }
   else if (a === 'swap') { S.log[TODAY].day = v; save(); closeSheet(); syncRun(); }
+  else if (a === 'ics') exportIcs();
+  else if (a === 'sc') { S.sc = !S.sc; save(); render(); if (S.sc) scHelp(); }
+  else if (a === 'schelp') scHelp();
   else if (a === 'cancelw') { act('Тренировка отменена', function () { delete S.log[TODAY]; }); stopRun(); }
   else if (a === 'prof') profSheet();
   else if (a === 'saveP') { var P2 = readProf(); if (!P2) return; S.prof = P2; save(); closeSheet(); render(); toast('Норма пересчитана'); }
@@ -719,16 +788,16 @@ document.addEventListener('click', function (e) {
   else if (a === 'imp') $('impf').click();
   else if (a === 'wipe') { if (confirm('Удалить все записи и начать заново? Сначала можно сохранить копию.')) { localStorage.removeItem(KEY); location.reload(); } }
   else if (a === 'set') logSet(+v);
-  else if (a === 'skip') { act('Упражнение пропущено', function () { S.log[TODAY].skip.push(v); }); closeSheet(); R.jump = null; R.end = null; if (!pos()) R.phase = 'cardio'; renderRun(); }
+  else if (a === 'skip') { act('Упражнение пропущено', function () { S.log[TODAY].skip.push(v); delete S.rt; }); closeSheet(); R.jump = null; R.end = null; if (!pos()) R.phase = 'cardio'; renderRun(); }
   else if (a === 'exlist') exList();
   else if (a === 'jump') {
     var L2 = S.log[TODAY], id = DAYS[R.day].list[+v].e, k = L2.skip.indexOf(id);
     if (k >= 0) L2.skip.splice(k, 1);
     save(); closeSheet(); R.jump = +v; R.end = null; if (pos()) R.phase = 'work'; renderRun();
   }
-  else if (a === 'add30') { R.end = (R.end || Date.now()) + 30e3; R.len = Math.max(R.len, Math.ceil((R.end - Date.now()) / 1e3)); clearInterval(timer); timer = setInterval(tickRun, 200); tickRun(); }
-  else if (a === 'restdone') { R.end = null; R.phase = pos() ? 'work' : 'cardio'; renderRun(); }
-  else if (a === 'cstart') { R.len = 900; R.end = Date.now() + 900e3; renderRun(); }
+  else if (a === 'add30') { R.end = (R.end || Date.now()) + 30e3; R.len = Math.max(R.len, Math.ceil((R.end - Date.now()) / 1e3)); S.rt = { d: TODAY, end: R.end, len: R.len, ph: R.phase }; save(); clearInterval(timer); timer = setInterval(tickRun, 200); tickRun(); }
+  else if (a === 'restdone') { R.end = null; delete S.rt; save(); R.phase = pos() ? 'work' : 'cardio'; renderRun(); }
+  else if (a === 'cstart') { R.len = 900; R.end = Date.now() + 900e3; S.rt = { d: TODAY, end: R.end, len: 900, ph: 'cardio' }; save(); renderRun(); }
   else if (a === 'cardio') { closeSheet(); finish(v === '1'); }
   else if (a === 'exit') { if (R && R.phase !== 'sum') toast('Прогресс сохранён — нажми «Продолжить» на главной'); stopRun(); }
 });
@@ -736,6 +805,7 @@ function nextPlanned() { return schedule(weekDates(TODAY), TODAY, S.log, S.train
 document.addEventListener('change', function (e) {
   var t = e.target;
   if (t.id === 'sd' && t.value) { S.start = t.value; save(); render(); }
+  else if (t.id === 'rtime' && t.value) { S.rtime = t.value; save(); }
   else if (t.id === 'impf' && t.files[0]) {
     t.files[0].text().then(function (txt) {
       var d = JSON.parse(txt);
@@ -744,14 +814,27 @@ document.addEventListener('change', function (e) {
     }).catch(function () { toast('Это не файл копии этого приложения'); });
   }
 });
+// Свайп по датам: палец тянет дуги, отпустил — сдвиг на столько дней, сколько протянул (54px = день)
+document.addEventListener('pointerdown', function (e) { var el = e.target.closest('.dates'); if (el) drag = { x: e.clientX, el: el }; });
+document.addEventListener('pointermove', function (e) { if (drag) drag.el.style.transform = 'translateX(' + (e.clientX - drag.x) + 'px)'; });
+function endDrag(e) {
+  if (!drag) return;
+  var dx = e.clientX - drag.x; drag.el.style.transform = ''; drag = null;
+  if (Math.abs(dx) < 24) return;
+  sel = addDays(sel, -Math.round(dx / 54) || (dx < 0 ? 1 : -1)); swallowUntil = Date.now() + 350; render();
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', function () { if (drag) { drag.el.style.transform = ''; drag = null; } });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet(); });
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) return;
   var now = iso(new Date());
-  if (now !== TODAY && !R) { TODAY = now; render(); }
+  if (now !== TODAY && !R) { if (sel === TODAY) sel = now; TODAY = now; render(); }
   if (R) tickRun();
   if (R && navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }).catch(function () {});
 });
 
 render();
+// приложение выгрузили во время отдыха или ходьбы — открываем тренировку сразу
+if (S.onb && S.rt && S.rt.d === TODAY && S.log[TODAY] && !S.log[TODAY].done) startRun(S.log[TODAY].day);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');

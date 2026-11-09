@@ -71,4 +71,23 @@ function score(dates, today, log, hab, train) {
   return Math.round(50 * t + 50 * hp);
 }
 
-if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday };
+// Календарь (.ics) для iPhone/Google: события в местном времени + напоминание за remind минут
+// ev: [{ date:'2026-11-11', time:'18:00', min:65, title:'…', desc:'…' }]
+function icsCal(ev, remind, stamp) {
+  function t(d, hm, add) {
+    var p = hm.split(':'), m = +p[0] * 60 + +p[1] + (add || 0), dd = d;
+    while (m >= 1440) { m -= 1440; dd = addDays(dd, 1); }
+    return dd.replace(/-/g, '') + 'T' + ('0' + Math.floor(m / 60)).slice(-2) + ('0' + m % 60).slice(-2) + '00';
+  }
+  function esc(s) { return String(s).replace(/[\\;,]/g, function (c) { return '\\' + c; }).replace(/\n/g, '\\n'); }
+  var out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//zal21//RU', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Зал · 21 день'];
+  ev.forEach(function (e) {
+    out.push('BEGIN:VEVENT', 'UID:' + e.date + '@zal21', 'DTSTAMP:' + stamp, 'DTSTART:' + t(e.date, e.time), 'DTEND:' + t(e.date, e.time, e.min),
+      'SUMMARY:' + esc(e.title), 'DESCRIPTION:' + esc(e.desc),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(e.title), 'TRIGGER:-PT' + remind + 'M', 'END:VALARM', 'END:VEVENT');
+  });
+  out.push('END:VCALENDAR');
+  return out.join('\r\n') + '\r\n';
+}
+
+if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday, icsCal: icsCal };

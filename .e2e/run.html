@@ -71,6 +71,37 @@ async function boot(){localStorage.clear();f.src='../index.html';await new Promi
  w.S.photo1=false;w.save();w.render();if(q('[data-a=photo]')){click('[data-a=photo]');await sl(80);ok(St().photo1===true,'фото отмечено');click('#toast [data-a=undo]');await sl(100);ok(!St().photo1,'отметка фото отменена')}else log('SKIP фото (не день 1)');
  // 14 привычки — повторное нажатие снимает
  click('[data-a=hab][data-v=p]');await sl(50);click('[data-a=hab][data-v=p]');await sl(50);ok(!St().hab[T()].p,'привычка снимается повторным нажатием');
+ // 15 даты: нажатие, свайп, прошлое/будущее, «К сегодня»
+ click('[data-t=home]');await sl(80);
+ var fut=w.addDays(T(),2);click('.dt[data-v="'+fut+'"]');await sl(80);
+ ok(w.sel===fut&&/Запланировано|День отдыха/.test(q('.cap').textContent),'дата в будущем: план или отдых');
+ click('.chip[data-a=sel]');await sl(80);ok(w.sel===T()&&!q('.chip[data-a=sel]'),'«К сегодня» возвращает');
+ var dd=q('.dates'),r=dd.getBoundingClientRect(),y=r.top+40;
+ function pe(t,x){dd.dispatchEvent(new w.PointerEvent(t,{clientX:x,clientY:y,bubbles:true,pointerId:1}))}
+ pe('pointerdown',200);pe('pointermove',90);pe('pointerup',90);await sl(80);
+ ok(w.sel===w.addDays(T(),2),'свайп влево на 2 дня вперёд');await sl(400);
+ w.S.log[w.addDays(T(),-1)]={day:'A',done:true,ex:{legPress:[[100,10]]}};w.save();
+ click('.chip[data-a=sel]');await sl(50);click('.dt[data-v="'+w.addDays(T(),-1)+'"]');await sl(80);
+ ok(/Сделано/.test(q('.cap').textContent)&&q('.cap [data-a=hist]'),'прошлый день: сделано + «Открыть и исправить»');
+ delete w.S.log[w.addDays(T(),-1)];w.save();click('.chip[data-a=sel]');await sl(50);
+ // 16 таймер переживает перезагрузку
+ delete w.S.log[T()];w.save();w.render();click('.cap [data-a=go]');await sl(150);
+ d.getElementById('f_kg').value=50;d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
+ var end=St().rt&&St().rt.end;ok(end&&St().rt.ph==='rest','отдых сохранён в данных');
+ f.contentWindow.location.reload();await new Promise(function(r){f.onload=r});w=f.contentWindow;d=f.contentDocument;w.onerror=function(m,u,l){fails++;log('JS ERROR '+m+' @'+l)};await sl(300);
+ ok(!q('#run').hidden&&w.R&&w.R.phase==='rest'&&w.R.end===end,'после перезагрузки — снова отдых с тем же окончанием');
+ click('.foot [data-a=restdone]');await sl(80);ok(!St().rt&&w.R.phase==='work','«Дальше» убирает сохранённый таймер');
+ w.history.back();await sl(200);
+ // 17 календарь
+ var got=null;w.URL.createObjectURL=function(b){got=b;return 'blob:x'};
+ click('[data-t=plan]');await sl(80);click('[data-a=ics]');await sl(150);
+ var txt=got?await got.text():'';var nEv=(txt.match(/BEGIN:VEVENT/g)||[]).length;
+ ok(nEv>=8&&txt.indexOf('TRIGGER:-PT30M')>0&&txt.indexOf('T180000')>0,'календарь: '+nEv+' тренировок с напоминанием');
+ // 18 таймер iPhone
+ click('[data-a=sc]');await sl(80);ok(St().sc&&q('#sheet ol'),'таймер iPhone включён, инструкция открыта');
+ click('#sheet [data-a=close]');await sl(150);click('[data-t=home]');await sl(50);click('.cap [data-a=go]');await sl(150);
+ d.getElementById('f_reps').value=10;click('[data-a=set]');await sl(80);
+ var sl2=q('a.chip[href^="shortcuts://run-shortcut"]');ok(sl2&&/text=\d+/.test(sl2.getAttribute('href')),'на отдыхе есть кнопка «Таймер iPhone»');
 }catch(e){fails++;log('CRASH '+e.message+' '+(e.stack||'').split('\n')[1])}
 log('\nИТОГО: '+(fails?fails+' ОШИБОК':'ВСЁ ПРОШЛО'));document.title='DONE'})();
 </script>

@@ -30,4 +30,8 @@ a.strictEqual(L.score(wk, '2026-11-10', {}, {}, [1, 3, 5]), 0);            // п
 a.strictEqual(L.score(wk, '2026-11-09', {}, {}, [1, 3, 5]), null);         // первый день, ещё ничего — не 0
 a.strictEqual(L.score(wk, '2026-11-09', {}, { '2026-11-09': { p: 1, s: 1 } }, [1, 3, 5]), 50); // только привычки
 a.strictEqual(L.score(wk, '2026-11-10', { '2026-11-09': { done: true } }, {}, [1, 3, 5]), 50);
+var ic = L.icsCal([{ date: '2026-11-11', time: '23:30', min: 65, title: 'Тренировка A, ноги', desc: 'строка1\nстрока2' }], 30, '20261109T120000Z');
+a.ok(ic.indexOf('DTSTART:20261111T233000') > 0 && ic.indexOf('DTEND:20261112T003500') > 0); // переход через полночь
+a.ok(ic.indexOf('SUMMARY:Тренировка A\\, ноги') > 0 && ic.indexOf('DESCRIPTION:строка1\\nстрока2') > 0); // экранирование по RFC 5545
+a.ok(ic.indexOf('TRIGGER:-PT30M') > 0 && /\r\n$/.test(ic));
 console.log('ok');
