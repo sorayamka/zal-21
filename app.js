@@ -114,15 +114,17 @@ var FIG = (function () {
   d += 'Z';
   return '<ellipse cx="100" cy="38" rx="19" ry="25"/><path d="' + d + '"/><path d="' + d + '" transform="matrix(-1 0 0 1 200 0)"/>';
 })();
+// Пятна свечения внутри силуэта: центр и полуоси подобраны по ширине рук, ног и корпуса на этой высоте
+// (рука ~145–164 на y=150, бедро ~104–136 на y=264, голень ~110–131 на y=336). Рисуются с множителем 1.25
 var ZONES = {
-  chest: [[88, 112, 15, 11], [112, 112, 15, 11]], delts: [[50, 102, 11, 13], [150, 102, 11, 13]], rear: [[50, 102, 11, 13], [150, 102, 11, 13]],
-  arms: [[48, 150, 9, 22], [152, 150, 9, 22]], abs: [[100, 164, 14, 30]], back: [[69, 142, 8, 24], [131, 142, 8, 24]],
-  glutes: [[100, 222, 30, 11]], quads: [[81, 264, 13, 32], [119, 264, 13, 32]], hams: [[81, 276, 10, 26], [119, 276, 10, 26]],
-  calves: [[82, 336, 8, 20], [118, 336, 8, 20]]
+  chest: [[88, 112, 13, 9], [112, 112, 13, 9]], delts: [[52, 104, 8, 9], [148, 104, 8, 9]], rear: [[52, 104, 8, 9], [148, 104, 8, 9]],
+  arms: [[46, 152, 6, 18], [154, 152, 6, 18]], abs: [[100, 166, 12, 26]], back: [[76, 140, 6, 18], [124, 140, 6, 18]],
+  glutes: [[100, 222, 26, 9]], quads: [[80, 266, 10, 26], [120, 266, 10, 26]], hams: [[80, 278, 8, 20], [120, 278, 8, 20]],
+  calves: [[80, 338, 6.5, 16], [120, 338, 6.5, 16]]
 };
-var LBL = { chest: [118, 110, 'r', 'Грудь'], back: [68, 142, 'l', 'Спина'], quads: [80, 262, 'l', 'Ноги'], hams: [120, 280, 'r', 'Бицепс бедра'],
-  glutes: [124, 222, 'r', 'Ягодицы'], delts: [50, 102, 'l', 'Плечи'], rear: [50, 102, 'l', 'Плечи'], arms: [152, 152, 'r', 'Руки'],
-  abs: [104, 172, 'r', 'Пресс'], calves: [82, 340, 'l', 'Икры'] };
+var LBL = { chest: [118, 110, 'r', 'Грудь'], back: [76, 140, 'l', 'Спина'], quads: [80, 262, 'l', 'Ноги'], hams: [120, 280, 'r', 'Бицепс бедра'],
+  glutes: [124, 222, 'r', 'Ягодицы'], delts: [52, 104, 'l', 'Плечи'], rear: [52, 104, 'l', 'Плечи'], arms: [154, 152, 'r', 'Руки'],
+  abs: [104, 172, 'r', 'Пресс'], calves: [80, 340, 'l', 'Икры'] };
 function figure(z, labels, small, subs) {
   var id = 'fg' + (++figN);
   // Свечение мышц — радиальный градиент, без фильтров и масок: Safari на iPhone рисовал размытие в маске с прямоугольными краями.
@@ -148,12 +150,14 @@ function figure(z, labels, small, subs) {
     '<filter id="' + id + 'm" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/>' +
     '<feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.35" result="g"/>' +
     '<feComposite in="b" in2="g" operator="arithmetic" k1=".28" k2=".78" k3="0" k4="0"/></filter>' +
-    '<radialGradient id="' + id + 'z"><stop offset="0" stop-color="#FF5A1A" stop-opacity=".95"/><stop offset=".45" stop-color="#FF6B2C" stop-opacity=".6"/><stop offset="1" stop-color="#FF6B2C" stop-opacity="0"/></radialGradient>' +
+    '<filter id="' + id + 'o" filterUnits="userSpaceOnUse" x="-100" y="-90" width="400" height="580"><feGaussianBlur stdDeviation="5"/></filter>' +
+    '<radialGradient id="' + id + 'z"><stop offset="0" stop-color="#FF5A1A" stop-opacity=".95"/><stop offset=".5" stop-color="#FF6B2C" stop-opacity=".7"/><stop offset="1" stop-color="#FF6B2C" stop-opacity="0"/></radialGradient>' +
     '<radialGradient id="' + id + 'y"><stop offset="0" stop-color="#FFB27E" stop-opacity=".85"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient></defs>' +
     '<g fill="#FFD7BC" opacity=".38" filter="url(#' + id + 'a)">' + FIG + '</g>' +
     '<g fill="url(#' + id + 'g)" filter="url(#' + id + 'm)">' + FIG + '</g>' +
     '<g fill="#fff" opacity=".28" filter="url(#' + id + 'h)" transform="translate(100 170) scale(.8 .86) translate(-100 -170)">' + FIG + '</g>' +
-    zs(1.7, 'z') + zs(.75, 'y') +
+    // размытие без маски: на iPhone прямоугольник давала связка «маска + размытие», а не само размытие
+    '<g filter="url(#' + id + 'o)">' + zs(1.15, 'z') + '</g><g filter="url(#' + id + 'b)">' + zs(.6, 'y') + '</g>' +
     lab + '</svg></div>';
 }
 // Подписи на фигуре: сколько подходов на зону сегодня
