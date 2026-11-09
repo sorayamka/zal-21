@@ -115,6 +115,24 @@ async function boot(){localStorage.clear();f.src='../index.html';await new Promi
  ok(seen['Жим гантелей на наклонной 30°|Подход 3 из 3']===false,'жим на наклонной: последний подход без отказа');
  ok(seen['Тяга горизонтального блока|Подход 3 из 3 · до отказа']===true,'тяга блока: последний подход — до отказа');
  ok(seen['Тяга горизонтального блока|Подход 1 из 3']===false,'первые подходы — не до отказа');
+ // 20 сон
+ click('#run [data-a=exit]');await sl(200);click('[data-t=home]');await sl(50);
+ click('[data-a=sleep]');await sl(80);ok(St().sl.cur&&q('.sky.night [data-a=wake]')&&q('#slt'),'«Ложусь спать»: ночная шапка с таймером и «Проснулся»');
+ w.S.sl.cur=Date.now()-450*6e4;w.save();w.render();click('[data-a=wake]');await sl(80);
+ var nk=Object.keys(St().sl.n),night=St().sl.n[T()];
+ ok(night&&Math.round((night[1]-night[0])/6e4)===450&&!St().sl.cur,'«Проснулся»: записано 7 ч 30 мин');
+ ok(St().hab[T()]&&St().hab[T()].z===true,'7+ часов — галочка «Сон 7+» сама');
+ click('#toast [data-a=undo]');await sl(80);ok(!St().sl.n[T()]&&St().sl.cur,'«Отменить» возвращает в «спишь»');
+ click('[data-a=wake]');await sl(80);
+ click('.card.sleep [data-a=slist]');await sl(80);click('#sheet [data-a=sedit]');await sl(80);
+ var inp=d.getElementById('ss');inp.value=w.dtl(Date.parse(inp.value)-3600e3);click('[data-a=ssave]');await sl(120);
+ night=St().sl.n[T()];ok(Math.round((night[1]-night[0])/6e4)===510,'правка: лёг на час раньше — 8 ч 30 мин');
+ click('#sheet [data-a=sedit]');await sl(80);d.getElementById('se').value=d.getElementById('ss').value;click('[data-a=ssave]');await sl(80);
+ ok(Math.round((St().sl.n[T()][1]-St().sl.n[T()][0])/6e4)===510&&/позже/.test(q('#toast').textContent),'«встал» раньше «лёг» — не сохраняет, объясняет');
+ click('[data-a=sdel]');await sl(120);ok(!St().sl.n[T()],'ночь удалена');click('#toast [data-a=undo]');await sl(80);ok(St().sl.n[T()],'удаление ночи отменено');
+ w.history.back();await sl(200);
+ click('[data-a=sleep]');await sl(50);click('[data-a=wake]');await sl(80);ok(!St().sl.cur&&/20 минут/.test(q('#toast').textContent),'меньше 20 минут — не пишет');
+ click('[data-t=prog]');await sl(80);ok(/Сон за 7 ночей/.test(d.body.textContent)&&/недосып/.test(d.body.textContent),'прогресс: карточка сна');
 }catch(e){fails++;log('CRASH '+e.message+' '+(e.stack||'').split('\n')[1])}
 log('\nИТОГО: '+(fails?fails+' ОШИБОК':'ВСЁ ПРОШЛО'));document.title='DONE'})();
 </script>

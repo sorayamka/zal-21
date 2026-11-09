@@ -71,6 +71,22 @@ function score(dates, today, log, hab, train) {
   return Math.round(50 * t + 50 * hp);
 }
 
+// Сон. n: [{ dur, bed, wake }] — длительность (мин), отход и подъём (минуты от полуночи)
+// Регулярность — стандартное отклонение времени отхода/подъёма; отход считаем от полудня, чтобы 23:50 и 00:10 были рядом
+function sleepStats(n) {
+  if (!n.length) return null;
+  function sd(a) {
+    var m = a.reduce(function (s, x) { return s + x; }, 0) / a.length;
+    return Math.round(Math.sqrt(a.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / a.length));
+  }
+  return {
+    avg: Math.round(n.reduce(function (s, x) { return s + x.dur; }, 0) / n.length),
+    bedSd: n.length > 1 ? sd(n.map(function (x) { return (x.bed + 720) % 1440; })) : null,
+    wakeSd: n.length > 1 ? sd(n.map(function (x) { return x.wake; })) : null,
+    debt: n.reduce(function (s, x) { return s + Math.max(0, 480 - x.dur); }, 0) // недосып до 8 часов, мин
+  };
+}
+
 // Календарь (.ics) для iPhone/Google: события в местном времени + напоминание за remind минут
 // ev: [{ date:'2026-11-11', time:'18:00', min:65, title:'…', desc:'…' }]
 function icsCal(ev, remind, stamp) {
@@ -90,4 +106,4 @@ function icsCal(ev, remind, stamp) {
   return out.join('\r\n') + '\r\n';
 }
 
-if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday, icsCal: icsCal };
+if (typeof module !== 'undefined') module.exports = { weekOf: weekOf, macros: macros, hint: hint, avg7: avg7, schedule: schedule, score: score, addDays: addDays, wday: wday, icsCal: icsCal, sleepStats: sleepStats };

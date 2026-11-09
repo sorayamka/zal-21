@@ -34,4 +34,8 @@ var ic = L.icsCal([{ date: '2026-11-11', time: '23:30', min: 65, title: 'Тре�
 a.ok(ic.indexOf('DTSTART:20261111T233000') > 0 && ic.indexOf('DTEND:20261112T003500') > 0); // переход через полночь
 a.ok(ic.indexOf('SUMMARY:Тренировка A\\, ноги') > 0 && ic.indexOf('DESCRIPTION:строка1\\nстрока2') > 0); // экранирование по RFC 5545
 a.ok(ic.indexOf('TRIGGER:-PT30M') > 0 && /\r\n$/.test(ic));
+var sl = L.sleepStats([{ dur: 450, bed: 1430, wake: 440 }, { dur: 420, bed: 10, wake: 430 }]); // 23:50 и 00:10
+a.strictEqual(sl.avg, 435); a.strictEqual(sl.bedSd, 10); a.strictEqual(sl.wakeSd, 5); a.strictEqual(sl.debt, 90);
+a.strictEqual(L.sleepStats([]), null); a.strictEqual(L.sleepStats([{ dur: 500, bed: 0, wake: 500 }]).bedSd, null);
+a.strictEqual(L.sleepStats([{ dur: 500, bed: 0, wake: 500 }]).debt, 0);
 console.log('ok');

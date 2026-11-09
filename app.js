@@ -198,7 +198,7 @@ function render() {
 // (иконка добавлена до black-translucent), полоса хотя бы сливается с фоном, а не торчит рамкой
 function paintBar() {
   var sky = R ? $('run').querySelector('.in.sky') : (window.scrollY < 40 && $('main').querySelector('.sky'));
-  var c = sky ? (sky.classList.contains('calm') ? '#5A4A40' : '#D8662A') : '#0A0807';
+  var c = sky ? (sky.classList.contains('night') ? '#2A2244' : sky.classList.contains('calm') ? '#5A4A40' : '#D8662A') : '#0A0807';
   var m = document.querySelector('meta[name="theme-color"]');
   if (m.content !== c) m.content = c;
   document.documentElement.style.backgroundColor = c; // и фон за пределами страницы при «резиновой» прокрутке вверх
@@ -291,6 +291,7 @@ function home() {
       (mode === 'train' && !started ? '<button class="lnk" data-a="pick">Выбрать другую тренировку</button>' : '') + '</div>';
   }
   h += '</section>';
+  if (S.sl && S.sl.cur) h = nightHero(); // спишь — вместо тренировки вся шапка ночная, «Проснулся» сразу на виду
 
   if (n === 1 && !S.photo1 || n >= 22 && !S.photo2) {
     h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('camera') + '</span>' + (n === 1 ? 'Фото «до»' : 'Фото «после»') + '</span>' +
@@ -315,6 +316,7 @@ function home() {
     '<p class="t2 sm" style="margin-top:14px">' + esc(w.d) + '</p></div>';
 
   h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('check') + '</span>Сегодня</span><span class="t3 xs">нажми, что сделал</span></div>' + habits() + '</div>';
+  if (!(S.sl && S.sl.cur)) h += sleepCard();
   return h;
 }
 function habits() {
@@ -323,6 +325,84 @@ function habits() {
     return '<button class="hab' + (H[x[0]] ? ' on' : '') + '" data-a="hab" data-v="' + x[0] + '" aria-pressed="' + !!H[x[0]] + '"><span class="o">' + ic(H[x[0]] ? 'check' : x[2]) + '</span>' + x[1] + '</button>';
   }).join('') + '</div>';
 }
+
+/* ---------- Сон ---------- */
+// S.sl = { cur: время «лёг» (пока спишь), n: { 'дата подъёма': [лёг, встал] } } — метки времени, мс
+function hm(ts) { var x = new Date(ts); return ('0' + x.getHours()).slice(-2) + ':' + ('0' + x.getMinutes()).slice(-2); }
+function durTxt(m) { m = Math.round(m); return Math.floor(m / 60) + ' ч ' + ('0' + m % 60).slice(-2) + ' мин'; }
+function dtl(ts) { return new Date(ts - new Date(ts).getTimezoneOffset() * 6e4).toISOString().slice(0, 16); } // для <input type=datetime-local>
+function nights(days) {
+  var n = (S.sl && S.sl.n) || {}, from = addDays(TODAY, -(days - 1));
+  return Object.keys(n).sort().filter(function (d) { return d >= from; }).map(function (d) {
+    var a = new Date(n[d][0]), b = new Date(n[d][1]);
+    return { d: d, s: n[d][0], e: n[d][1], dur: Math.round((n[d][1] - n[d][0]) / 6e4), bed: a.getHours() * 60 + a.getMinutes(), wake: b.getHours() * 60 + b.getMinutes() };
+  });
+}
+function nightHero() {
+  var cur = S.sl.cur;
+  return '<section class="sky grain night"><div class="top"><div class="logo">' + ic('moon') + 'Зал</div><span class="chip">' + ic('moon') + 'Спишь с ' + hm(cur) + '</span></div>' +
+    figure([], [], true) + '<div class="cap"><span class="eyebrow">Ночь</span><h1 class="num-l" id="slt" style="font-size:44px;margin:10px 0 8px">' + durTxt((Date.now() - cur) / 6e4) + '</h1>' +
+    '<p>Нажми, как только встанешь — посчитаю сон и режим</p>' +
+    '<button class="pb" data-a="wake">' + ic('sun') + 'Проснулся</button><button class="lnk" data-a="scancel">Не записывать эту ночь</button></div></section>';
+}
+function sleepCard() {
+  var cur = S.sl && S.sl.cur;
+  if (cur) return '<div class="card sleep on"><div class="ch"><span class="l"><span class="ico">' + ic('moon') + '</span>Спишь с ' + hm(cur) + '</span><button class="sel" data-a="scancel">отменить</button></div>' +
+    '<div class="num-l" style="margin-top:14px" id="slt">' + durTxt((Date.now() - cur) / 6e4) + '</div>' +
+    '<button class="pb wide" style="margin-top:16px" data-a="wake">' + ic('sun') + 'Проснулся</button></div>';
+  var ns = nights(7), last = ns[ns.length - 1], st = sleepStats(ns);
+  return '<div class="card sleep"><div class="ch"><span class="l"><span class="ico">' + ic('moon') + '</span>Сон</span><button class="sel" data-a="slist">все ночи</button></div>' +
+    (last ? '<div class="fc" style="margin-top:12px;align-items:center"><div><div class="num-l">' + durTxt(last.dur).replace(' мин', '<small> мин</small>').replace(' ч ', '<small> ч </small>') + '</div>' +
+      '<div class="t2 xs" style="margin-top:6px">' + (last.d === TODAY ? 'этой ночью' : dayName(last.d)) + ' · ' + hm(last.s) + '–' + hm(last.e) + '</div></div>' +
+      '<div class="t2 xs" style="text-align:right">в среднем<br><b style="color:var(--t1);font-weight:400;font-size:15px">' + durTxt(st.avg) + '</b></div></div>'
+      : '<p class="t2 sm" style="margin-top:10px">Нажми, когда ложишься, и «Проснулся» утром — посчитаю, сколько ты спал и насколько ровный режим</p>') +
+    '<button class="pb gh wide" style="margin-top:14px;height:48px" data-a="sleep">' + ic('moon') + 'Ложусь спать</button></div>';
+}
+function sleepProg() {
+  var ns = nights(7), st = sleepStats(ns), by = {};
+  ns.forEach(function (x) { by[x.d] = x; });
+  var days = []; for (var i = 6; i >= 0; i--) days.push(addDays(TODAY, -i));
+  var h = '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('moon') + '</span>Сон за 7 ночей</span><button class="sel" data-a="slist">все ночи</button></div>';
+  if (!st) return h + '<p class="t2 sm" style="margin-top:10px">Отмечай на главной «Ложусь спать» и «Проснулся» — здесь появятся длительность и режим</p></div>';
+  h += '<div class="fc"><div><div class="num-xl" style="font-size:44px">' + Math.floor(st.avg / 60) + '<small>ч</small> ' + ('0' + st.avg % 60).slice(-2) + '<small>м</small></div><div class="t2 xs" style="margin-top:8px">в среднем · цель 7–9 ч</div></div>' +
+    '<div class="bars sl">' + days.map(function (d) {
+      var x = by[d], v = x ? Math.min(1, x.dur / 600) : 0;
+      return '<span' + (d === TODAY ? ' class="now"' : '') + '><i class="' + (x ? (x.dur >= 420 ? 't' : 'd') : 'f') + '" style="height:' + (x ? Math.round(6 + v * 58) : 46) + 'px"></i>' + WD[wday(d)].charAt(0) + '</span>';
+    }).join('') + '</div></div>';
+  function reg(sd) { return sd === null ? '—' : '±' + sd + ' мин'; }
+  h += '<div class="trio sm"><div><b>' + reg(st.bedSd) + '</b><span>отход ко сну</span></div><div><b>' + reg(st.wakeSd) + '</b><span>подъём</span></div>' +
+    '<div><b class="' + (st.debt > 420 ? 'ac' : '') + '">' + (st.debt ? Math.round(st.debt / 6) / 10 + ' ч' : '0') + '</b><span>недосып до 8 ч за неделю</span></div></div>' +
+    '<p class="t2 sm" style="margin-top:14px">' + (st.bedSd !== null && st.bedSd > 45 ? 'Режим скачет больше чем на 45 минут — ложись в одно время, это важно не меньше длительности' :
+      st.avg < 420 ? 'Меньше 7 часов: в дефиците калорий недосып съедает мышцы и тормозит жиросжигание'
+      : st.avg < 480 ? 'В норме. Добери до 8 часов — в дефиците это лучше для мышц и аппетита' : 'Отличный сон — мышцы восстанавливаются, аппетит под контролем') + '</p></div>';
+  return h;
+}
+function sleepList() {
+  var ns = nights(30).reverse();
+  sheet('<h2>Сон</h2><p class="t2 sm" style="margin-top:4px">Нажми на ночь, чтобы исправить время</p><div style="margin-top:8px">' +
+    (ns.length ? ns.map(function (x) {
+      return '<button class="exl" data-a="sedit" data-v="' + x.d + '"><span class="th dn" style="font-size:13px">' + WD[wday(x.d)] + '</span><div><b>' + durTxt(x.dur) + '</b><small>' + dayName(x.d) + ' · ' + hm(x.s) + '–' + hm(x.e) + '</small></div>' + ic('next') + '</button>';
+    }).join('') : '<p class="t2 sm">Пока нет записей</p>') + '</div>' +
+    '<button class="pb gh wide" style="margin-top:12px" data-a="sedit" data-v="new">' + ic('plus') + 'Добавить ночь вручную</button>' +
+    '<p class="t3 xs" style="margin-top:14px">Это время в кровати: засыпание обычно занимает 10–20 минут. Веб-приложение не видит данные «Здоровья» и Apple Watch — точнее всего отмечать кнопками сразу, как лёг и как встал</p>');
+}
+function sleepEdit(d) {
+  var x = d !== 'new' && S.sl.n[d], s = x ? x[0] : new Date(addDays(TODAY, -1) + 'T23:00').getTime(), e = x ? x[1] : new Date(TODAY + 'T07:00').getTime();
+  sheet('<h2>' + (x ? 'Ночь · ' + dayName(d) : 'Добавить ночь') + '</h2>' +
+    '<label class="t2 xs" style="display:block;margin-top:14px">Лёг<input type="datetime-local" id="ss" class="date-in" value="' + dtl(s) + '"></label>' +
+    '<label class="t2 xs" style="display:block;margin-top:12px">Встал<input type="datetime-local" id="se" class="date-in" value="' + dtl(e) + '"></label>' +
+    '<button class="pb wide" style="margin-top:18px" data-a="ssave" data-v="' + d + '">Сохранить</button>' +
+    (x ? '<button class="lnk" style="color:#E7806A" data-a="sdel" data-v="' + d + '">Удалить ночь</button>' : ''));
+}
+// Записать ночь; 7+ часов — сама ставится галочка «Сон 7+»
+function putNight(s, e, old) {
+  var key = iso(new Date(e)), m = (e - s) / 6e4;
+  S.sl = S.sl || { n: {} }; S.sl.n = S.sl.n || {};
+  if (old && old !== 'new' && old !== key) delete S.sl.n[old];
+  S.sl.n[key] = [s, e];
+  if (m >= 420) { S.hab[key] = S.hab[key] || {}; S.hab[key].z = true; }
+}
+setInterval(function () { var el = $('slt'); if (el && S.sl && S.sl.cur) el.textContent = durTxt((Date.now() - S.sl.cur) / 6e4); }, 30e3);
 
 /* ---------- Прогресс ---------- */
 function progress() {
@@ -363,6 +443,8 @@ function progress() {
       return '<button class="exl" data-a="hist" data-v="' + d + '"><span class="th dn">' + L.day + '</span><div><b>' + esc(DAYS[L.day].t) + '</b><small>' + dayName(d) + ' · ' + st.sets + ' ' + plural(st.sets, 'подход', 'подхода', 'подходов') +
         (L.done ? '' : ' · не закончена') + '</small></div>' + ic('next') + '</button>';
     }).join('') : '<p class="t2 sm" style="padding:8px 0">Пока пусто — здесь появятся все тренировки</p>') + '</div></div>';
+
+  h += sleepProg();
 
   var str = strength();
   h += '<div class="card"><div class="ch"><span class="l"><span class="ico">' + ic('dumbbell') + '</span>Сила</span><span class="t3 xs">первый раз → сейчас</span></div><div class="lst" style="margin-top:8px">' +
@@ -851,6 +933,27 @@ document.addEventListener('click', function (e) {
     save(); render(); ntSheet(); ntfyDays();
   }
   else if (a === 'nthelp') ntSheet();
+  // сон
+  else if (a === 'sleep') { act('Спокойной ночи', function () { S.sl = S.sl || { n: {} }; S.sl.cur = Date.now(); }); render(); window.scrollTo(0, 0); }
+  else if (a === 'scancel') { act('Сон не записан', function () { delete S.sl.cur; }); render(); }
+  else if (a === 'wake') {
+    var s0 = S.sl.cur, e0 = Date.now(), m0 = (e0 - s0) / 6e4;
+    if (m0 < 20) { act('Меньше 20 минут — не записал', function () { delete S.sl.cur; }); render(); return; }
+    act('Ты спал ' + durTxt(m0), function () { putNight(s0, e0); delete S.sl.cur; });
+    render();
+    if (m0 > 16 * 60) { sleepEdit(iso(new Date(e0))); toast('Больше 16 часов — похоже, забыл нажать. Поправь время'); }
+  }
+  else if (a === 'slist') sleepList();
+  else if (a === 'sedit') sleepEdit(v);
+  else if (a === 'ssave') {
+    var ss = Date.parse($('ss').value), se = Date.parse($('se').value);
+    if (!(ss && se) || se <= ss) { toast('«Встал» должно быть позже, чем «лёг»'); return; }
+    if (se - ss > 20 * 36e5) { toast('Больше 20 часов — проверь даты'); return; }
+    if (se > Date.now() + 6e4) { toast('Это время ещё не наступило'); return; }
+    act('Сон записан: ' + durTxt((se - ss) / 6e4), function () { putNight(ss, se, v); });
+    sleepList(); render();
+  }
+  else if (a === 'sdel') { act('Ночь удалена', function () { delete S.sl.n[v]; }); sleepList(); render(); }
   else if (a === 'ntcopy') { (navigator.clipboard ? navigator.clipboard.writeText(S.nt) : Promise.reject()).then(function () { toast('Скопировано'); }, function () { toast('Выдели название и скопируй вручную'); }); }
   else if (a === 'nttest') { ntfy('test-' + Date.now(), 10, 'Зал', 'Уведомления работают — так придёт конец отдыха'); toast('Через 10 секунд придёт уведомление — заблокируй телефон'); }
   else if (a === 'ntoff') { delete S.nt; delete S.ntd; save(); closeSheet(); render(); toast('Уведомления отключены'); }
